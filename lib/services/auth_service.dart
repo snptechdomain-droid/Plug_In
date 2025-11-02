@@ -152,10 +152,10 @@ class AuthService {
 
       await prefs.setString(_currentUserKey, jsonEncode(user));
       _currentUser = User(
-        id: user['id'],
-        username: user['username'],
-        email: user['email'],
-        role: user['role'],
+        id: user['id']?.toString() ?? '',
+        username: user['username']?.toString() ?? '',
+        email: user['email']?.toString() ?? '',
+        role: user['role']?.toString() ?? 'member',
       );
 
       return (true, 'Login successful');

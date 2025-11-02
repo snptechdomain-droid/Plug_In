@@ -113,6 +113,11 @@ class _LoginFormState extends State<_LoginForm> {
                       onPressed: () => Navigator.of(context).pushNamed('/register'),
                       child: const Text('Sign Up'),
                     ),
+                    const SizedBox(width: 20),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pushReplacementNamed('/guest'),
+                      child: const Text('Continue as guest'),
+                    ),
                   ],
                 ),
               ],

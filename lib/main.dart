@@ -1,3 +1,4 @@
+import 'package:app/screens/guest_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:app/screens/login_screen.dart';
 import 'package:app/screens/register_screen.dart';
@@ -9,11 +10,14 @@ import 'package:app/services/auth_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AuthService().createTemporaryUsers();
-  runApp(const SlugNPlugApp());
+  await AuthService().loadCurrentUser();
+  final bool loggedIn = await AuthService().isLoggedIn();
+  runApp(SlugNPlugApp(isLoggedIn: loggedIn));
 }
 
 class SlugNPlugApp extends StatelessWidget {
-  const SlugNPlugApp({super.key});
+  final bool isLoggedIn;
+  const SlugNPlugApp({super.key, required this.isLoggedIn});
 
   @override
   Widget build(BuildContext context) {
@@ -113,12 +117,13 @@ class SlugNPlugApp extends StatelessWidget {
             useMaterial3: true,
           ),
           themeMode: themeMode,
-          initialRoute: '/splash',
+          initialRoute: isLoggedIn ? '/dashboard' : '/guest',
           routes: {
             '/splash': (context) => const SplashScreen(),
             '/login': (context) => const LoginScreen(),
             '/register': (context) => const RegisterScreen(),
             '/dashboard': (context) => const DashboardScreen(),
+            '/guest': (context) => const GuestScreen(),
           },
         );
       },

@@ -48,7 +48,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
       if (mounted) Navigator.of(context).pushReplacementNamed('/login');
       return;
     }
-    _currentUser = user.username;
+    _currentUser = user.id;
 
     collaborations = await _persistence.loadCollaborations();
     if (collaborations.isEmpty) {
@@ -138,7 +138,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                     padding: const EdgeInsets.symmetric(vertical: 2.0, horizontal: 8.0),
                     child: ListTile(
                       title: Text(c.title, overflow: TextOverflow.ellipsis),
-                      subtitle: Text('Leads: ${c.leads.join(', ')}', overflow: TextOverflow.ellipsis),
+                      subtitle: Text('Leads: ${c.leads.join(', ')}'),
                       selected: isSelected,
                       selectedTileColor: theme.colorScheme.primary.withOpacity(0.1),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -241,9 +241,9 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     ).toList();
     final bool canEdit = _selected != null && _selected!.leads.contains(_currentUser);
 
-    final tabChildren = _selected == null
+    final List<Widget> tabChildren = _selected == null
         ? <Widget>[]
-        : [
+        : <Widget>[
             FlowchartScreen(collaboration: _selected, canEdit: canEdit),
             MindmapScreen(collaboration: _selected, canEdit: canEdit),
             TimelineScreen(collaboration: _selected, canEdit: canEdit),
@@ -326,7 +326,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                           children: [
                             TabBarView(
                               controller: _tabController,
-                              children: tabChildren,
+                              children: tabChildren.map((e) => e as Widget).toList(),
                             ),
                             if (!canEdit)
                               Positioned.fill(
@@ -386,7 +386,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                                 children: [
                                   TabBarView(
                                     controller: _tabController,
-                                    children: tabChildren,
+                                    children: tabChildren.map((e) => e as Widget).toList(),
                                   ),
                                   if (!canEdit)
                                     Positioned.fill(
