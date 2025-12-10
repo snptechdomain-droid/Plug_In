@@ -1,0 +1,52 @@
+WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
+WARNING: sun.misc.Unsafe::staticFieldBase has been called by com.google.inject.internal.aop.HiddenClassDefiner (file:/C:/apache-maven-3.9.11/lib/guice-5.1.0-classes.jar)
+WARNING: Please consider reporting this to the maintainers of class com.google.inject.internal.aop.HiddenClassDefiner
+WARNING: sun.misc.Unsafe::staticFieldBase will be removed in a future release
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------------------< com.snp:backend >---------------------------
+[INFO] Building backend 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.3.2:clean (default-clean) @ backend ---
+[INFO] Deleting E:\sNp\app\backend\target
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ backend ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ backend ---
+[INFO] Changes detected - recompiling the module! :source
+[INFO] Compiling 14 source files with javac [debug release 17] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /E:/sNp/app/backend/src/main/java/com/snp/backend/controller/ws/BoardSocketController.java:[26,57] cannot find symbol
+  symbol:   method getProjectId()
+  location: variable message of type com.snp.backend.model.ws.CursorMessage
+[ERROR] /E:/sNp/app/backend/src/main/java/com/snp/backend/controller/ws/BoardSocketController.java:[37,57] cannot find symbol
+  symbol:   method getProjectId()
+  location: variable message of type com.snp.backend.model.ws.NodeMessage
+[INFO] 2 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.677 s
+[INFO] Finished at: 2025-12-01T21:21:24+05:30
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project backend: Compilation failure: Compilation failure: 
+[ERROR] /E:/sNp/app/backend/src/main/java/com/snp/backend/controller/ws/BoardSocketController.java:[26,57] cannot find symbol
+[ERROR]   symbol:   method getProjectId()
+[ERROR]   location: variable message of type com.snp.backend.model.ws.CursorMessage
+[ERROR] /E:/sNp/app/backend/src/main/java/com/snp/backend/controller/ws/BoardSocketController.java:[37,57] cannot find symbol
+[ERROR]   symbol:   method getProjectId()
+[ERROR]   location: variable message of type com.snp.backend.model.ws.NodeMessage
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
