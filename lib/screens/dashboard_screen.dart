@@ -1,4 +1,5 @@
 import 'package:app/screens/announcements_screen.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart'; 
 import 'package:flutter_svg/flutter_svg.dart';
@@ -155,7 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     const Color specialColor = Color(0xFFFFD700); // Gold
     const Color errorColor = Color(0xFFFF5252); // Red Accent
 
-    for (int i = 0; i < 25; i++) { // Reduced to 25 for better performance
+    for (int i = 0; i < (kIsWeb ? 8 : 25); i++) { // Reduced to 8 on Web for performance
       final String text;
       final Color color;
       final double roll = random.nextDouble();
