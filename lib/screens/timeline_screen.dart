@@ -524,6 +524,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 }
