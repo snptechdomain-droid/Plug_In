@@ -398,7 +398,7 @@ class RoleBasedDatabaseService {
   String _getBaseUrl() {
     // static const String _baseUrl = 'http://192.168.1.3:9000/api'; // Local Mobile Dev
     // Production Cloud URL
-    return 'https://plug-in-n697.onrender.com/api'; 
+    return 'https://plug-in-n697.onrender.com'; 
   }
 
   /// Fetch all users from Backend API
