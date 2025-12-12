@@ -774,12 +774,12 @@ class _MindmapScreenState extends State<MindmapScreen>
           // Link Handle
           if (widget.canEdit)
             Positioned(
-              right: -10,
-              top: _MindmapScreenState.nodeHeight / 2 - 10,
+              right: -30, // Move further out for thumb access
+              top: _MindmapScreenState.nodeHeight / 2 - 25, // Center vertically
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                  behavior: HitTestBehavior.translucent, // Ensure touches are caught
                   onPanStart: (d) {
                     final RenderBox? box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
                     if (box != null) {
@@ -830,21 +830,23 @@ class _MindmapScreenState extends State<MindmapScreen>
                     }
                   },
                   child: Container(
-                    width: 20,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.7),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withOpacity(0.5),
-                          blurRadius: 4,
-                          spreadRadius: 1,
-                        ),
-                      ],
+                    width: 60, // Large hit area
+                    height: 50,
+                    color: Colors.transparent, // Invisible hit box
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 24, // Visual circle
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.5), // Mindmap theme color
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1),
+                        ]
+                      ),
+                      child: const Icon(Icons.add, size: 16, color: Colors.white),
                     ),
-                    child: const Icon(Icons.add, size: 12, color: Colors.white),
                   ),
                 ),
               ),
