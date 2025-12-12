@@ -53,89 +53,80 @@ class CreativeToolbar extends StatelessWidget {
           final isSmallScreen = constraints.maxWidth < 600;
           
           if (isSmallScreen) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Top Row: Title, Edit Status, Save
-                Row(
-                  children: [
-                    SvgPicture.asset(
-                      iconPath,
-                      width: 24,
-                      height: 24,
-                      colorFilter: ColorFilter.mode(Colors.blue.shade600, BlendMode.srcIn),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        title, 
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (canEdit && onSave != null)
-                      IconButton(
-                        onPressed: onSave,
-                        icon: const Icon(Icons.save, size: 20),
-                        color: colorScheme.secondary,
-                        tooltip: 'Save',
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Bottom Row: Controls
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      if (isPanMode != null && onModeChanged != null) ...[
-                        Container(
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _ToolButton(
-                                icon: Icons.pan_tool,
-                                isSelected: isPanMode!,
-                                onTap: () => onModeChanged!(true),
-                              ),
-                              Container(width: 1, color: colorScheme.outlineVariant.withOpacity(0.5)),
-                              _ToolButton(
-                                icon: Icons.mouse,
-                                isSelected: !isPanMode!,
-                                onTap: () => onModeChanged!(false),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Chip(
-                        label: Text(canEdit ? 'Editable' : 'Read-only'),
-                        backgroundColor: canEdit ? Colors.green.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
-                        labelStyle: TextStyle(color: canEdit ? Colors.green : Colors.grey, fontSize: 10),
-                        padding: EdgeInsets.zero,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      const SizedBox(width: 8),
-                      // View Controls
-                      if (onZoomOut != null) IconButton(icon: const Icon(Icons.zoom_out), onPressed: onZoomOut, iconSize: 20, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                      if (onResetView != null) IconButton(icon: const Icon(Icons.center_focus_strong), onPressed: onResetView, iconSize: 20, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                      if (onZoomIn != null) IconButton(icon: const Icon(Icons.zoom_in), onPressed: onZoomIn, iconSize: 20, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
-                      
-                      const SizedBox(width: 8),
-                      if (extraActions != null) ...extraActions!,
-                    ],
+            // Mobile Layout: Compact Single Row
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // 1. Icon & Title (Compact)
+                  SvgPicture.asset(
+                    iconPath,
+                    width: 20,
+                    height: 20,
+                    colorFilter: ColorFilter.mode(Colors.blue.shade600, BlendMode.srcIn),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // 2. Pan/Edit Toggle (Crucial)
+                  if (isPanMode != null && onModeChanged != null) ...[
+                    Container(
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _ToolButton(
+                            icon: Icons.pan_tool,
+                            isSelected: isPanMode!,
+                            onTap: () => onModeChanged!(true),
+                          ),
+                          Container(width: 1, color: colorScheme.outlineVariant.withOpacity(0.5)),
+                          _ToolButton(
+                            icon: Icons.mouse,
+                            isSelected: !isPanMode!,
+                            onTap: () => onModeChanged!(false),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+
+                  // 3. Save Button
+                  if (canEdit && onSave != null)
+                    IconButton(
+                      onPressed: onSave,
+                      icon: const Icon(Icons.save, size: 18),
+                      color: colorScheme.secondary,
+                      tooltip: 'Save',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  const SizedBox(width: 8),
+
+                  // 4. View Controls (Compact)
+                  if (onZoomOut != null) IconButton(icon: const Icon(Icons.remove, size: 18), onPressed: onZoomOut, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                  const SizedBox(width: 4),
+                  if (onResetView != null) IconButton(icon: const Icon(Icons.center_focus_strong, size: 18), onPressed: onResetView, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                  const SizedBox(width: 4),
+                  if (onZoomIn != null) IconButton(icon: const Icon(Icons.add, size: 18), onPressed: onZoomIn, padding: EdgeInsets.zero, constraints: const BoxConstraints()),
+                  
+                  // 5. Extra Actions
+                  if (extraActions != null) ...[
+                    const SizedBox(width: 8),
+                    ...extraActions!,
+                  ],
+                ],
+              ),
             );
           }
 

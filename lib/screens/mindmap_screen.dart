@@ -808,10 +808,10 @@ class _MindmapScreenState extends State<MindmapScreen>
                       for (final other in _nodes) {
                         if (other['id'] == id) continue;
                         final rect = Rect.fromLTWH(
-                          other['x'], 
-                          other['y'], 
-                          _MindmapScreenState.nodeWidth, 
-                          _MindmapScreenState.nodeHeight
+                          other['x'] - 15, // Easier drop target
+                          other['y'] - 15, 
+                          _MindmapScreenState.nodeWidth + 30, 
+                          _MindmapScreenState.nodeHeight + 30
                         );
                         if (rect.contains(endPoint)) {
                           target = other;
