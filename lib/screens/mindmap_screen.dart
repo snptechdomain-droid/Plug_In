@@ -208,13 +208,16 @@ class _MindmapScreenState extends State<MindmapScreen>
     _didPanOnCanvas = true;
     final local = _toLocal(details.localFocalPoint);
     
-    // Handle pinch-to-zoom when two or more pointers are present
+    // Handle pinch-to-zoom AND Pan when two or more pointers are present
     if (details.pointerCount >= 2) {
+      final delta = details.localFocalPoint - _lastFocal;
       setState(() {
         _scale = (_initialScale * details.scale).clamp(0.4, 3.0);
+        _offset += delta;
       });
+      _velocity = delta;
     } else if (_draggingNodeId != null) {
-      // Dragging a node
+      // Dragging a node (One finger)
       print('DEBUG: Dragging node $_draggingNodeId');
       final idx = _nodes.indexWhere((e) => e['id'] == _draggingNodeId);
       if (idx != -1 && _dragStartLocal != null && _nodeStartPos != null) {
@@ -226,14 +229,9 @@ class _MindmapScreenState extends State<MindmapScreen>
           _save(local: true);
         });
       }
-    } else {
-      // Pan the canvas
-      if (_isPanMode) {
-        final delta = details.localFocalPoint - _lastFocal;
-        setState(() => _offset += delta);
-        _velocity = delta;
-      }
     }
+    // Note: Single-finger background drag (Pan) is now DISABLED per user request.
+    
     _lastFocal = details.localFocalPoint;
   }
 
@@ -681,7 +679,7 @@ class _MindmapScreenState extends State<MindmapScreen>
       child: Text(
         linking
             ? 'Link mode: tap a target node or tap canvas to cancel.'
-            : 'Tap canvas to create node • Drag to pan',
+            : 'Tap canvas to create node • Use 2 fingers to pan',
         textAlign: TextAlign.center,
         style: TextStyle(
             fontWeight: FontWeight.w600, color: Colors.blueGrey[800]),
