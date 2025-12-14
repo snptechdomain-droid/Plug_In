@@ -1,0 +1,25 @@
+name: Sync Backend to Hugging Face
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Push to hub
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git remote add space https://sNp-tech:$HF_TOKEN@huggingface.co/spaces/sNp-tech/backend
+          # Force push to ensure it stays in sync (isolating backend folder)
+          git subtree split --prefix backend -b hf-deploy
+          git push space hf-deploy:main --force
