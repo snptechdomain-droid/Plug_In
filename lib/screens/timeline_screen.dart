@@ -4,6 +4,7 @@ import 'package:app/widgets/creative_toolbar.dart';
 import 'package:app/widgets/glass_container.dart';
 import 'package:app/widgets/live_cursors.dart';
 import 'package:app/services/websocket_service.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class TimelineScreen extends StatefulWidget {
   final Collaboration? collaboration;
@@ -369,6 +370,41 @@ class _TimelineScreenState extends State<TimelineScreen> {
                final y = size.height / 2 - 25000;
                _transformationController.value = Matrix4.identity()..translate(x, y);
             },
+            extraActions: [
+               IconButton(
+                  icon: SvgPicture.asset(
+                    'assets/svg/clear_custom.svg',
+                    width: 24,
+                    height: 24,
+                    colorFilter: ColorFilter.mode(Colors.red.shade600, BlendMode.srcIn),
+                  ),
+                  tooltip: 'Clear All',
+                  onPressed: widget.canEdit 
+                    ? () {
+                       showDialog(
+                         context: context,
+                         builder: (ctx) => AlertDialog(
+                           title: const Text('Clear Timeline'),
+                           content: const Text('Delete all milestones?'),
+                           actions: [
+                             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                             ElevatedButton(
+                               onPressed: () {
+                                 Navigator.pop(ctx);
+                                 setState(() {
+                                   _milestones.clear();
+                                   _save();
+                                 });
+                               }, 
+                               child: const Text('Clear')
+                             ),
+                           ],
+                         ),
+                       );
+                    }
+                    : null,
+               ),
+            ],
           ),
           Expanded(
             child: Stack(

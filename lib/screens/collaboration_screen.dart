@@ -94,6 +94,10 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
         if (_projects.isNotEmpty && _selectedProject == null) {
           _selectedProject = _projects.first;
           _titleController.text = _selectedProject!['title'];
+        } else if (_selectedProject != null) {
+           // Refresh selected project with new data
+           final updated = _projects.firstWhere((p) => p['id'] == _selectedProject!['id'], orElse: () => _selectedProject!);
+           _selectedProject = updated;
         }
       });
       if (_selectedProject != null) {

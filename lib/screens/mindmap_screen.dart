@@ -10,6 +10,7 @@ import 'package:app/widgets/creative_toolbar.dart';
 import 'package:app/widgets/live_cursors.dart';
 import 'package:app/widgets/minimap.dart';
 import 'package:app/services/websocket_service.dart';
+import 'package:app/themes/mindmap_theme.dart';
 
 /// Mindmap screen component — complete, polished and fixed nearest-edge + zoom logic.
 /// Use: MindmapScreen(collaboration: ..., canEdit: true/false)
@@ -55,9 +56,11 @@ class _MindmapScreenState extends State<MindmapScreen>
   Offset? _nodeStartPos;
   String? _selectedId;
 
-  static const double nodeWidth = 180; // Slightly wider for glass effect
-  static const double nodeHeight = 56;
-  static const int defaultNodeColor = 0xFFFFD700; // Gold
+  static const double nodeWidth = 160; 
+  static const double nodeHeight = 50;
+  static const int defaultNodeColor = 0xFF457B9D; 
+  
+  MindMapTheme _theme = MindMapTheme.meister;
 
   final WebSocketService _ws = WebSocketService();
   late String _projectId;
@@ -331,84 +334,7 @@ class _MindmapScreenState extends State<MindmapScreen>
     });
   }
 
-  void _renameNode(Map<String, dynamic> node) async {
-    final res = await showDialog<String>(
-      context: context,
-      builder: (_) => _RenameDialog(initial: node['label']),
-    );
-    if (res != null && res.trim().isNotEmpty) {
-      setState(() {
-        node['label'] = res.trim();
-        _save();
-      });
-      _syncNode(node);
-    }
-  }
 
-  void _pickColor(Map<String, dynamic> node) async {
-    final res = await showDialog<int>(
-      context: context,
-      builder: (_) => _ColorPickerDialog(initial: (node['nodeColor'] as int?) ?? defaultNodeColor),
-    );
-    if (res != null) {
-      setState(() {
-        node['nodeColor'] = res;
-        _save();
-      });
-      _syncNode(node);
-    }
-  }
-
-  void _pickIcon(Map<String, dynamic> node) async {
-    final res = await showDialog<int>(
-      context: context,
-      builder: (_) => _IconPickerDialog(initial: node['iconCodePoint']),
-    );
-    if (res != null) {
-      setState(() {
-        node['iconCodePoint'] = res == 0 ? null : res;
-        _save();
-      });
-      _syncNode(node);
-    }
-  }
-
-  void _pickShape(Map<String, dynamic> node) async {
-    final res = await showDialog<String>(
-      context: context,
-      builder: (_) => _ShapePickerDialog(initial: node['shape'] ?? 'rounded'),
-    );
-    if (res != null) {
-      setState(() {
-        node['shape'] = res;
-        _save();
-      });
-      _syncNode(node);
-    }
-  }
-
-  void _deleteNode(Map<String, dynamic> node) {
-    setState(() {
-      _nodes.removeWhere((n) => n['id'] == node['id']);
-      for (final n in _nodes) {
-        ((n['connectedTo'] as List?) ?? [])
-            .removeWhere((l) => l['targetId'] == node['id']);
-      }
-      _save();
-      widget.onSave?.call();
-    });
-    _ws.sendNodeUpdate(_projectId, 'MINDMAP_UPDATE', node['id'], {
-      'action': 'DELETE'
-    });
-  }
-
-  void _startLinking(Map<String, dynamic> node) {
-    if (!widget.canEdit) return;
-    setState(() {
-      _linkingFromId = node['id'];
-      _linkingToPoint = Offset(node['x'] + nodeWidth, node['y'] + nodeHeight / 2);
-    });
-  }
 
   void _endLinking(Map<String, dynamic> target) async {
     if (!widget.canEdit || _linkingFromId == null) return;
@@ -466,97 +392,9 @@ class _MindmapScreenState extends State<MindmapScreen>
     }
   }
 
-  void _addChildNode(Map<String, dynamic> parent) {
-    if (!widget.canEdit) return;
-    final newId = DateTime.now().millisecondsSinceEpoch.toString();
-    
-    final children = (parent['connectedTo'] as List).length;
-    
-    final newNode = {
-        'id': newId,
-        'x': parent['x'] + 240,
-        'y': parent['y'] + (children == 0 ? 0 : (children * 70)), 
-        'label': 'New Topic',
-        'nodeColor': parent['nodeColor'], 
-        'connectedTo': [],
-        'shape': 'rounded',
-    };
-    
-    setState(() {
-       _nodes.add(newNode);
-       (parent['connectedTo'] as List).add({
-          'targetId': newId, 
-          'color': parent['nodeColor'] ?? 0xFFFFD700,
-          'strokeWidth': 2.0,
-          'style': 'curved'
-       });
-       _selectedId = newId; 
-    });
-    _save();
-    _syncNode(parent);
-    _syncNode(newNode);
-    
-    // Auto-edit:
-    Future.delayed(const Duration(milliseconds: 200), () => _renameNode(newNode));
-  }
 
-  Widget _buildContextBar() {
-    if (_selectedId == null) return const SizedBox.shrink();
-    if (!widget.canEdit) return const SizedBox.shrink();
 
-    final node = _nodes.firstWhere((n) => n['id'] == _selectedId, orElse: () => {});
-    if (node.isEmpty) return const SizedBox.shrink();
 
-    // Calculate Screen Position
-    final nodeLocal = Offset(_toDouble(node['x']), _toDouble(node['y']));
-    final transformed = _offset + nodeLocal * _scale;
-    
-    // Position ABOVE the node
-    final barWidth = 200.0;
-    final top = transformed.dy - 60; 
-    final left = transformed.dx + (nodeWidth * _scale / 2) - (barWidth / 2);
-
-    return Positioned(
-      top: top,
-      left: left,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-             BoxShadow(color: Colors.black26, blurRadius: 8, offset: const Offset(0, 4))
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-             IconButton(
-               icon: const Icon(Icons.add_circle, color: Colors.blueAccent),
-               tooltip: 'Add Child',
-               onPressed: () => _addChildNode(node),
-             ),
-             Container(width: 1, height: 24, color: Colors.grey[300]),
-             IconButton(
-               icon: Icon(Icons.link, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
-               tooltip: 'Link',
-               onPressed: () => _startLinking(node),
-             ),
-             IconButton(
-               icon: const Icon(Icons.palette, color: Colors.purpleAccent),
-               tooltip: 'Color',
-               onPressed: () => _pickColor(node),
-             ),
-             IconButton(
-               icon: const Icon(Icons.delete, color: Colors.redAccent),
-               tooltip: 'Delete',
-               onPressed: () => _deleteNode(node),
-             ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -605,8 +443,7 @@ class _MindmapScreenState extends State<MindmapScreen>
           ),
         ),
         
-        // Floating Context Bar (MindMeister Style)
-        _buildContextBar(),
+
       ],
     );
   }
@@ -828,6 +665,10 @@ class _MindmapScreenState extends State<MindmapScreen>
                        ),
                        // Nodes
                        ..._nodes.map(_nodeWidget),
+                       
+                       // Floating Toolbar (Meister Style)
+                       if (_selectedId != null && widget.canEdit)
+                         _buildFloatingToolbar(),
                     ],
                   ),
                 ),
@@ -850,107 +691,30 @@ class _MindmapScreenState extends State<MindmapScreen>
     return Positioned(
       left: _toDouble(node['x']),
       top: _toDouble(node['y']),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Node Content
-          MouseRegion(
-            cursor: widget.canEdit ? SystemMouseCursors.move : SystemMouseCursors.basic,
-            child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 260),
-                opacity: appeared ? 1.0 : 0.0,
-                child: AnimatedScale(
-                  duration: const Duration(milliseconds: 220),
-                  scale: linking ? 1.06 : 1.0,
-                  child: SizedBox(
-                      width: _MindmapScreenState.nodeWidth,
-                      height: _MindmapScreenState.nodeHeight,
+      child: SizedBox(
+        width: _MindmapScreenState.nodeWidth, // Match exact content width
+        height: _MindmapScreenState.nodeHeight, // Match exact content height
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Node Content
+            Positioned.fill(
+              child: MouseRegion(
+                cursor: widget.canEdit ? SystemMouseCursors.move : SystemMouseCursors.basic,
+                child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 260),
+                    opacity: appeared ? 1.0 : 0.0,
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 220),
+                      scale: linking ? 1.06 : 1.0,
                       child: _buildNodeShape(node, color, linking),
                     ),
-                ),
-              ),
-          ),
-          // Link Handle
-          if (widget.canEdit)
-            Positioned(
-              right: -30, // Move further out for thumb access
-              top: _MindmapScreenState.nodeHeight / 2 - 25, // Center vertically
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent, // Ensure touches are caught
-                  onPanStart: (d) {
-                    final RenderBox? box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
-                    if (box != null) {
-                      final local = box.globalToLocal(d.globalPosition);
-                      setState(() {
-                        _linkingFromId = id;
-                        _linkingToPoint = _toLocal(local);
-                      });
-                    }
-                  },
-                  onPanUpdate: (d) {
-                    final RenderBox? box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
-                    if (box != null) {
-                      final local = box.globalToLocal(d.globalPosition);
-                      setState(() {
-                        _linkingToPoint = _toLocal(local);
-                      });
-                    }
-                  },
-                  onPanEnd: (d) {
-                    final RenderBox? box = _canvasKey.currentContext?.findRenderObject() as RenderBox?;
-                    if (box != null) {
-                      final local = box.globalToLocal(d.globalPosition);
-                      final endPoint = _toLocal(local);
-                      Map<String, dynamic>? target;
-                      for (final other in _nodes) {
-                        if (other['id'] == id) continue;
-                        final rect = Rect.fromLTWH(
-                          other['x'] - 15, // Easier drop target
-                          other['y'] - 15,
-                          _MindmapScreenState.nodeWidth + 30,
-                          _MindmapScreenState.nodeHeight + 30
-                        );
-                        if (rect.contains(endPoint)) {
-                          target = other;
-                          break;
-                        }
-                      }
-
-                      if (target != null) {
-                        _endLinking(target);
-                      } else {
-                        setState(() {
-                          _linkingFromId = null;
-                          _linkingToPoint = null;
-                        });
-                      }
-                    }
-                  },
-                  child: Container(
-                    width: 60, // Large hit area
-                    height: 50,
-                    color: Colors.transparent, // Invisible hit box
-                    alignment: Alignment.center,
-                    child: Container(
-                      width: 24, // Visual circle
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.5), // Mindmap theme color
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                        boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1),
-                        ]
-                      ),
-                      child: const Icon(Icons.add, size: 16, color: Colors.white),
-                    ),
                   ),
-                ),
               ),
             ),
-        ],
+
+          ],
+        ),
       ),
     );
   }
@@ -1064,7 +828,168 @@ class _MindmapScreenState extends State<MindmapScreen>
       child: content,
     );
   }
-}
+
+
+
+
+  
+  void _startLinking(Map<String, dynamic> source) {
+      setState(() {
+        _linkingFromId = source['id'];
+        _linkingToPoint = Offset(_toDouble(source['x']) + nodeWidth + 50, _toDouble(source['y']) + nodeHeight/2);
+      });
+  }
+
+  void _addNodeAt(Offset pos, {String? parentId}) {
+    if (!widget.canEdit) return;
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final newNode = {
+      'id': id,
+      'label': 'New Node',
+      'x': pos.dx,
+      'y': pos.dy,
+      'shape': _theme.nodeShape == NodeShape.pill ? 'rounded' : 'rounded',
+      'nodeColor': _theme.palette[_nodes.length % _theme.palette.length].value,
+      'connectedTo': parentId != null ? [{'targetId': parentId, 'color': Colors.grey.value}] : [],
+      'appeared': true,
+    };
+    
+    // If parentId provided, also link parent TO child? 
+    // Usually tree structure: Parent -> Child.
+    // If we want Parent -> Child link:
+    if (parentId != null) {
+       final parent = _nodes.firstWhere((n) => n['id'] == parentId);
+       final connections = parent['connectedTo'] as List;
+       connections.add({
+         'targetId': id,
+         'color': parent['nodeColor'] ?? Colors.blue.value,
+         'style': 'curved'
+       });
+    }
+
+    setState(() {
+      _nodes.add(newNode);
+      _selectedId = id; // Auto-select new node
+      _save();
+    });
+    
+    // Broadcast change
+    _ws.sendNodeUpdate(_projectId, 'MINDMAP_UPDATE', id, {
+       ...newNode,
+       'action': 'ADD'
+    });
+    
+    // Also broadcast parent update regarding new connection?
+    if (parentId != null) {
+       final parent = _nodes.firstWhere((n) => n['id'] == parentId);
+       _syncNode(parent);
+    }
+  }
+
+  void _deleteNode(String id) {
+     if (!widget.canEdit) return;
+     setState(() {
+       _nodes.removeWhere((n) => n['id'] == id);
+       // Remove connections to this node
+       for (var n in _nodes) {
+         final connections = n['connectedTo'] as List;
+         connections.removeWhere((c) => c['targetId'] == id);
+       }
+       if (_selectedId == id) _selectedId = null;
+       _save();
+     });
+     _ws.sendNodeUpdate(_projectId, 'MINDMAP_UPDATE', id, {'action': 'DELETE'});
+  }
+
+  Future<void> _renameNode(Map<String, dynamic> node) async {
+    if (!widget.canEdit) return;
+    final newLabel = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _RenameDialog(initial: node['label']),
+    );
+    if (newLabel != null && newLabel.isNotEmpty) {
+      setState(() {
+        node['label'] = newLabel;
+        _save();
+      });
+      _syncNode(node);
+    }
+  }
+
+  Future<void> _pickColor(Map<String, dynamic> node) async {
+    if (!widget.canEdit) return;
+    final newColor = await showDialog<int>(
+      context: context,
+      builder: (ctx) => _ColorPickerDialog(initial: node['nodeColor'] ?? Colors.blue.value),
+    );
+    if (newColor != null) {
+      setState(() {
+        node['nodeColor'] = newColor;
+        _save();
+      });
+      _syncNode(node);
+    }
+  }
+
+  Widget _buildFloatingToolbar() {
+    final node = _nodes.firstWhere((n) => n['id'] == _selectedId, orElse: () => {});
+    if (node.isEmpty) return const SizedBox.shrink();
+
+    final x = _toDouble(node['x']);
+    final y = _toDouble(node['y']);
+    
+    // Position toolbar above the node
+    return Positioned(
+      left: x + nodeWidth / 2 - 100, // Center horizontally (approx width 200)
+      top: y - 60,
+      child: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+               _toolbarBtn(Icons.add, () => _addNodeAt(Offset(x + nodeWidth + 50, y), parentId: node['id'])),
+               _toolbarBtn(Icons.link, () {
+                  setState(() {
+                    _linkingFromId = node['id'];
+                    _linkingToPoint = Offset(x + nodeWidth/2, y + nodeHeight/2);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Tap another node to link'), duration: Duration(milliseconds: 1000)),
+                  );
+               }),
+               _toolbarBtn(Icons.edit, () => _renameNode(node)),
+               _toolbarBtn(Icons.palette, () => _pickColor(node)),
+               Container(width: 1, height: 20, color: Colors.grey.shade300, margin: const EdgeInsets.symmetric(horizontal: 4)),
+               _toolbarBtn(Icons.delete, () => _deleteNode(node['id']), color: Colors.red),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _toolbarBtn(IconData icon, VoidCallback onTap, {Color color = Colors.black87}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Icon(icon, size: 20, color: color),
+      ),
+    );
+  }
+
+
+} // End of _MindmapScreenState
 
 // ---------------------- Dialogs ----------------------
 
@@ -1338,7 +1263,7 @@ class _MindmapPainter extends CustomPainter {
         }
 
         if (link['arrow'] == true) {
-          _drawArrow(canvas, src, dst, paint);
+          _drawArrow(canvas, src, dst, paint, color);
         }
       }
     }
@@ -1443,19 +1368,18 @@ class _MindmapPainter extends CustomPainter {
     return path;
   }
 
-  void _drawArrow(Canvas canvas, Offset p1, Offset p2, Paint paint) {
+  void _drawArrow(Canvas canvas, Offset p1, Offset p2, Paint paint, Color color) {
     final angle = (p2 - p1).direction;
     final arrowPath = Path();
     final mid = (p1 + p2) / 2;
     
+    // Simpler, cleaner arrow
     arrowPath.moveTo(mid.dx + cos(angle) * arrowSize, mid.dy + sin(angle) * arrowSize);
-    arrowPath.lineTo(mid.dx + cos(angle + 2.6) * arrowSize, mid.dy + sin(angle + 2.6) * arrowSize);
-    arrowPath.lineTo(mid.dx + cos(angle - 2.6) * arrowSize, mid.dy + sin(angle - 2.6) * arrowSize);
+    arrowPath.lineTo(mid.dx + cos(angle + 2.5) * arrowSize, mid.dy + sin(angle + 2.5) * arrowSize);
+    arrowPath.lineTo(mid.dx + cos(angle - 2.5) * arrowSize, mid.dy + sin(angle - 2.5) * arrowSize);
     arrowPath.close();
     
-    // Draw arrow glow
-    canvas.drawPath(arrowPath, Paint()..color = paint.color.withOpacity(0.4)..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4)..style = PaintingStyle.fill);
-    canvas.drawPath(arrowPath, Paint()..color = paint.color..style = PaintingStyle.fill);
+    canvas.drawPath(arrowPath, Paint()..color = color..style = PaintingStyle.fill);
   }
 
   @override

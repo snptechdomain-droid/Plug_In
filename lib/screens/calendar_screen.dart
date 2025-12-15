@@ -70,9 +70,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       }
       return Colors.red; // Offline Event
     } else if (item is ScheduleEntry) {
-      if (item.type == 'EXAM') return Colors.orange;
-      if (item.type == 'HOLIDAY') return Colors.purple;
-      return Colors.blue; // Class/Other
+      if (item.type.toLowerCase().contains('online')) return Colors.green;
+      if (item.type.toLowerCase().contains('offline') || item.type.toLowerCase() == 'event') return Colors.red;
+      if (item.type.toLowerCase() == 'exam') return Colors.orange;
+      if (item.type.toLowerCase() == 'holiday') return Colors.purple;
+      return Colors.blue;
     }
     return Colors.grey;
   }
@@ -191,7 +193,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showAddDialog() {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    String type = 'CLASS';
+    String type = 'Event';
     DateTime selectedTime = DateTime.now();
     
     showDialog(
@@ -209,7 +211,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 DropdownButton<String>(
                   value: type,
                   isExpanded: true,
-                  items: ['CLASS', 'EXAM', 'HOLIDAY', 'MEETING'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                  items: ['Event', 'Meet (Online)', 'Meet (Offline)', 'Holiday', 'Exam']
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
                   onChanged: (v) => setDialogState(() => type = v!),
                 ),
                 const SizedBox(height: 10),

@@ -719,6 +719,42 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                       tooltip: 'Add Sticky Note',
                       onPressed: _addAnnotationDefault,
                     ),
+                    const VerticalDivider(width: 20),
+                    IconButton(
+                      icon: SvgPicture.asset(
+                        'assets/svg/clear_custom.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: ColorFilter.mode(Colors.red.shade600, BlendMode.srcIn),
+                      ),
+                      tooltip: 'Clear All',
+                      onPressed: () {
+                         showDialog(
+                           context: context,
+                           builder: (ctx) => AlertDialog(
+                             title: const Text('Clear Flowchart'),
+                             content: const Text('Delete all nodes, connections, and notes?'),
+                             actions: [
+                               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+                               ElevatedButton(
+                                 onPressed: () {
+                                   Navigator.pop(ctx);
+                                   setState(() {
+                                     _nodes.clear();
+                                     _connections.clear();
+                                     _annotations.clear();
+                                     _selectedId = null;
+                                     _linkingFromId = null;
+                                     _save();
+                                   });
+                                 }, 
+                                 child: const Text('Clear')
+                               ),
+                             ],
+                           ),
+                         );
+                      },
+                    ),
                   ],
                 ),
               ),

@@ -19,7 +19,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   
   bool _isLoading = false;
-  String? _error;
   bool _passwordVisible = false;
 
   late RoleBasedDatabaseService _roleDatabase;
@@ -42,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() { _isLoading = true; _error = null; });
+    setState(() { _isLoading = true; });
     
     try {
       final user = await _roleDatabase.authenticateUser(
@@ -54,27 +53,25 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (user != null && user.isActive) {
         await _roleDatabase.setCurrentUser(user);
-        
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/dashboard');
         }
       } else {
-        setState(() { _error = 'Invalid username or password'; });
         if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Login failed: Invalid credentials'), backgroundColor: Colors.red),
+           const SnackBar(
+             content: Text('Invalid username or password'),
+             backgroundColor: Colors.red,
+           ),
          );
         }
       }
     } catch (e) {
-      setState(() { _error = e.toString().replaceAll('Exception: ', ''); });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${_error}'),
+          const SnackBar(
+            content: Text('An error occurred. Please try again.'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-            action: SnackBarAction(label: 'Retry', onPressed: _login, textColor: Colors.white),
           ),
         );
       }

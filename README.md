@@ -58,4 +58,4 @@ flutter run
 5.  Open a Pull Request
 
 ---
-© 2025 Slug N Plug Club
+© 2025 Slug N Plug
