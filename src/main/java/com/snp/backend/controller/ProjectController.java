@@ -163,6 +163,9 @@ public class ProjectController {
             }
 
             Project project = projectOpt.get();
+            if (project.getPolls() == null) {
+                project.setPolls(new ArrayList<>());
+            }
             Optional<Poll> pollOpt = project.getPolls().stream().filter(p -> p.getId().equals(pollId)).findFirst();
 
             if (pollOpt.isEmpty()) {
@@ -261,6 +264,9 @@ public class ProjectController {
         }
 
         Project project = projectOpt.get();
+        if (project.getPolls() == null)
+            return ResponseEntity.notFound().build();
+
         Optional<Poll> pollOpt = project.getPolls().stream().filter(p -> p.getId().equals(pollId)).findFirst();
 
         if (pollOpt.isEmpty()) {
