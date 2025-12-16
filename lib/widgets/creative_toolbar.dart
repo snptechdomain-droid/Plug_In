@@ -5,6 +5,7 @@ class CreativeToolbar extends StatelessWidget {
   final String title;
   final String iconPath;
   final bool canEdit;
+  final VoidCallback? onBack;
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
   final VoidCallback? onResetView;
@@ -21,6 +22,7 @@ class CreativeToolbar extends StatelessWidget {
     required this.title,
     required this.iconPath,
     this.canEdit = false,
+    this.onBack, // New
     this.onZoomIn,
     this.onZoomOut,
     this.onResetView,
@@ -58,6 +60,12 @@ class CreativeToolbar extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
+                   // 0. Back Button (Critical)
+                   if (onBack != null) 
+                     IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack, padding: EdgeInsets.zero),
+                   
+                  // 1. Icon & Title (Compact)
+
                   // 1. Icon & Title (Compact)
                   SvgPicture.asset(
                     iconPath,
@@ -133,6 +141,12 @@ class CreativeToolbar extends StatelessWidget {
           // Desktop / Tablet Layout
           return Row(
             children: [
+              // 0. Back Button
+              if (onBack != null) ...[
+                 IconButton(icon: const Icon(Icons.arrow_back), onPressed: onBack),
+                 const SizedBox(width: 8),
+              ],
+              
               // Title Section
               SvgPicture.asset(
                 iconPath,

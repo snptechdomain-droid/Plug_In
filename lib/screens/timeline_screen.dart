@@ -24,7 +24,9 @@ class _TimelineScreenState extends State<TimelineScreen> {
   List<Map<String, dynamic>> _milestones = [];
   final List<String> _phases = ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4'];
   final double _laneHeight = 200.0;
-  bool _isPanMode = true; // Default to Pan
+  bool _isPanMode = false; // Default to Edit Mode (Select) for immediate interaction
+
+
 
   final List<Color> colors = const [
     Color(0xFFFFD700), // Gold
@@ -354,6 +356,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
             title: 'Timeline 2D',
             iconPath: 'assets/svg/timeline_custom.svg',
             canEdit: widget.canEdit,
+            onBack: () => Navigator.of(context).pop(),
             activeUsers: const ['Alice', 'Bob', 'Charlie'],
             isPanMode: _isPanMode,
             onModeChanged: (v) => setState(() => _isPanMode = v),
@@ -410,8 +413,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
             child: Stack(
               children: [
                 LiveCursors(
-                  cursorStream: null,
-                  myUserId: null,
+                  cursorStream: _ws.cursorStream,
+                  myUserId: _myUserId,
                   child: InteractiveViewer(
                     transformationController: _transformationController,
                     boundaryMargin: const EdgeInsets.all(20000),

@@ -30,7 +30,10 @@ class _MindmapScreenState extends State<MindmapScreen>
   List<Map<String, dynamic>> _nodes = [];
   String? _linkingFromId;
   Offset? _linkingToPoint;
+
   bool _didPanOnCanvas = false;
+  String? _selectedId; // Restored public variable for state
+
 
   double _toDouble(dynamic value) {
     if (value == null) return 0.0;
@@ -47,26 +50,21 @@ class _MindmapScreenState extends State<MindmapScreen>
   // Zoom & pan
   double _scale = 1.0;
   double _initialScale = 1.0;
-  Offset _offset = Offset.zero;
-  Offset _lastFocal = Offset.zero;
-  Offset _velocity = Offset.zero;
-  // Dragging a node via canvas-scale gestures
-  String? _draggingNodeId;
-  Offset? _dragStartLocal;
-  Offset? _nodeStartPos;
-  String? _selectedId;
 
+  Offset _offset = Offset.zero; // Restored
+  
   static const double nodeWidth = 160; 
   static const double nodeHeight = 50;
   static const int defaultNodeColor = 0xFF457B9D; 
   
   MindMapTheme _theme = MindMapTheme.meister;
 
+  final TransformationController _transformationController = TransformationController();
   final WebSocketService _ws = WebSocketService();
   late String _projectId;
   late String _myUserId;
   
-  bool _isPanMode = true; // Default to Pan for mobile
+  bool _isPanMode = false; // Default to Select/Edit mode for immediate interaction
 
   Map<String, dynamic> _sanitizeNode(Map<String, dynamic> map) {
     // normalize connectedTo
@@ -104,8 +102,6 @@ class _MindmapScreenState extends State<MindmapScreen>
     _pulseController =
         AnimationController(vsync: this, duration: const Duration(seconds: 4))
           ..repeat();
-    _inertiaController =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     
     _projectId = widget.collaboration?.id ?? 'demo_project';
     _myUserId = 'user_${DateTime.now().millisecondsSinceEpoch % 1000}';
@@ -144,7 +140,7 @@ class _MindmapScreenState extends State<MindmapScreen>
   @override
   void dispose() {
     _pulseController.dispose();
-    _inertiaController.dispose();
+    _transformationController.dispose();
     super.dispose();
   }
 
@@ -182,98 +178,17 @@ class _MindmapScreenState extends State<MindmapScreen>
   }
 
   // --- ZOOM, PAN, and INERTIA LOGIC ---
-  void _onScaleStart(ScaleStartDetails details) {
-    _lastFocal = details.localFocalPoint;
-    _inertiaController.stop();
-    _initialScale = _scale;
-    
-    // Store the initial position to check for node hits on first update
-    if (details.pointerCount == 1 && widget.canEdit && !_isPanMode) {
-      final local = _toLocal(details.localFocalPoint);
-      print('DEBUG: ScaleStart at $local (raw: ${details.localFocalPoint})');
-      for (final n in _nodes) {
-        final nx = _toDouble(n['x']);
-        final ny = _toDouble(n['y']);
-        final rect = Rect.fromLTWH(nx, ny, nodeWidth, nodeHeight);
-        if (rect.contains(local)) {
-          // Mark this node as a potential drag target
-          _dragStartLocal = local;
-          _nodeStartPos = Offset(nx, ny);
-          _draggingNodeId = n['id'] as String;
-          print('DEBUG: Node detected for dragging: $_draggingNodeId');
-          break;
-        }
-      }
-    }
-  }
 
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    _didPanOnCanvas = true;
-    final local = _toLocal(details.localFocalPoint);
-    
-    // Handle pinch-to-zoom AND Pan when two or more pointers are present
-    if (details.pointerCount >= 2) {
-      final delta = details.localFocalPoint - _lastFocal;
-      setState(() {
-        _scale = (_initialScale * details.scale).clamp(0.4, 3.0);
-        _offset += delta;
-      });
-      _velocity = delta;
-    } else if (_draggingNodeId != null) {
-      // Dragging a node (One finger)
-      print('DEBUG: Dragging node $_draggingNodeId');
-      final idx = _nodes.indexWhere((e) => e['id'] == _draggingNodeId);
-      if (idx != -1 && _dragStartLocal != null && _nodeStartPos != null) {
-        final deltaLocal = local - _dragStartLocal!;
-        print('DEBUG: Moving node by delta: $deltaLocal');
-        setState(() {
-          _nodes[idx]['x'] = _nodeStartPos!.dx + deltaLocal.dx;
-          _nodes[idx]['y'] = _nodeStartPos!.dy + deltaLocal.dy;
-          _save(local: true);
-        });
-      }
-    }
-    // Note: Single-finger background drag (Pan) is now DISABLED per user request.
-    
-    _lastFocal = details.localFocalPoint;
-  }
 
-  void _onScaleEnd(ScaleEndDetails details) {
-    // Only apply inertia if we were PANNING (not dragging a node)
-    if (_draggingNodeId == null && _velocity.distance > 1) {
-      final begin = _offset;
-      final end = _offset + _velocity * 20;
-      final curve =
-          CurvedAnimation(parent: _inertiaController, curve: Curves.decelerate);
-      _inertiaAnimation = Tween(begin: begin, end: end).animate(curve)
-        ..addListener(() => setState(() => _offset = _inertiaAnimation!.value));
-      _inertiaController
-        ..reset()
-        ..forward();
-    }
-    
-    // Reset velocity to prevent ghost flings later
-    _velocity = Offset.zero;
-    
-    // Sync dragged node position
-    if (_draggingNodeId != null) {
-      final node = _nodes.firstWhere((n) => n['id'] == _draggingNodeId, orElse: () => {});
-      if (node.isNotEmpty) {
-        _syncNode(node);
-      }
-    }
-
-    // Clear any node-drag state
-    _draggingNodeId = null;
-    _dragStartLocal = null;
-    _nodeStartPos = null;
-  }
-
-  void _resetView() => setState(() {
+  void _resetView() {
+     _transformationController.value = Matrix4.identity();
+     setState(() {
         _scale = 1.0;
         _offset = Offset.zero;
-      });
+     });
+  }
 
+  // Adjusted to rely on the tracking variables synced in onInteractionUpdate
   Offset _toLocal(Offset global) => (global - _offset) / _scale;
 
   void _save({bool local = false}) {
@@ -453,6 +368,7 @@ class _MindmapScreenState extends State<MindmapScreen>
       title: 'Mindmap',
       iconPath: 'assets/svg/mindmap_custom.svg',
       canEdit: widget.canEdit,
+      onBack: () => Navigator.of(context).pop(), // Connected
       activeUsers: const ['Alice', 'Bob', 'Charlie'],
       isPanMode: _isPanMode,
       onModeChanged: (v) => setState(() => _isPanMode = v),
@@ -552,8 +468,11 @@ class _MindmapScreenState extends State<MindmapScreen>
             child: GestureDetector(
               key: _canvasKey,
               behavior: HitTestBehavior.translucent,
-                onTapUp: (d) {
-              if (_didPanOnCanvas) return;
+              onTapUp: (d) {
+              if (_didPanOnCanvas) {
+                _didPanOnCanvas = false;
+                return;
+              }
 
               final worldPos = _toLocal(d.localPosition);
               Map<String, dynamic>? hitNode;
@@ -598,60 +517,29 @@ class _MindmapScreenState extends State<MindmapScreen>
                 _addNode(worldPos);
               }
             },
-            onDoubleTapDown: (d) {
-               final worldPos = _toLocal(d.localPosition);
-               for (final node in _nodes.reversed) {
-                 final rect = Rect.fromLTWH(
-                    _toDouble(node['x']),
-                    _toDouble(node['y']),
-                    _MindmapScreenState.nodeWidth,
-                    _MindmapScreenState.nodeHeight,
-                 );
-                 if (rect.contains(worldPos)) {
-                   _renameNode(node);
-                   return;
-                 }
-               }
-            },
-            onLongPressStart: (d) {
-               final worldPos = _toLocal(d.localPosition);
-               for (final node in _nodes.reversed) {
-                 final rect = Rect.fromLTWH(
-                    _toDouble(node['x']),
-                    _toDouble(node['y']),
-                    _MindmapScreenState.nodeWidth,
-                    _MindmapScreenState.nodeHeight,
-                 );
-                 if (rect.contains(worldPos)) {
-                   if (widget.canEdit) {
-                       _startLinking(node);
-                       HapticFeedback.lightImpact();
-                       ScaffoldMessenger.of(context).showSnackBar(
-                           const SnackBar(content: Text('Link Mode Started! Tap target.'), duration: Duration(milliseconds: 1000)),
-                       );
-                   }
-                   return;
-                 }
-               }
-            },
-            onScaleStart: _onScaleStart,
-            onScaleUpdate: _onScaleUpdate,
-            onScaleEnd: _onScaleEnd,
-            child: Stack(
-               fit: StackFit.expand,
-               children: [
-                 // Connections & Nodes need to be transformed
-                 ClipRect(
-                  child: Transform(
-                    alignment: Alignment.topLeft,
-                    transform: Matrix4.identity()
-                      ..translate(_offset.dx, _offset.dy)
-                      ..scale(_scale),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                       // Canvas Size Enforcer for Connections
-                       SizedBox(width: 10000, height: 10000), 
+            // Note: onScale* removed. InteractiveViewer handles pan/zoom below.
+            child: InteractiveViewer(
+              transformationController: _transformationController,
+              boundaryMargin: const EdgeInsets.all(double.infinity),
+              constrained: false,
+              minScale: 0.1,
+              maxScale: 5.0,
+              onInteractionUpdate: (d) {
+                // Sync state for Painter/Grid
+                if (_transformationController.value != Matrix4.identity()) {
+                   setState(() {
+                      _scale = _transformationController.value.getMaxScaleOnAxis();
+                      final t = _transformationController.value.getTranslation();
+                      _offset = Offset(t.x, t.y);
+                   });
+                }
+              },
+              child: SizedBox(
+                width: 10000, 
+                height: 10000,
+                child: Stack(
+                   clipBehavior: Clip.none,
+                   children: [
                        // Connections
                        Positioned.fill(
                          child: CustomPaint(
@@ -666,18 +554,18 @@ class _MindmapScreenState extends State<MindmapScreen>
                        // Nodes
                        ..._nodes.map(_nodeWidget),
                        
-                       // Floating Toolbar (Meister Style)
+                       // Floating Toolbar (Re-positioned via Overlay or Stack?)
+                       // If inside InteractiveViewer, it scales. 
+                       // For now, keep it here to ensure it moves with the node.
                        if (_selectedId != null && widget.canEdit)
                          _buildFloatingToolbar(),
-                    ],
-                  ),
+                   ],
                 ),
-               ),
-             ]
+              ),
+            ),
           ),
         ),
-      ),
-        ],
+      ],
       ),
     );
   }
@@ -701,15 +589,30 @@ class _MindmapScreenState extends State<MindmapScreen>
             Positioned.fill(
               child: MouseRegion(
                 cursor: widget.canEdit ? SystemMouseCursors.move : SystemMouseCursors.basic,
-                child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 260),
-                    opacity: appeared ? 1.0 : 0.0,
-                    child: AnimatedScale(
-                      duration: const Duration(milliseconds: 220),
-                      scale: linking ? 1.06 : 1.0,
-                      child: _buildNodeShape(node, color, linking),
+                child: GestureDetector(
+                  onPanUpdate: (d) {
+                    if (!widget.canEdit) return;
+                    setState(() {
+                      node['x'] = _toDouble(node['x']) + d.delta.dx / _scale;
+                      node['y'] = _toDouble(node['y']) + d.delta.dy / _scale;
+                    });
+                  },
+                  onPanEnd: (d) {
+                     if (widget.canEdit) {
+                        _save();
+                        _syncNode(node);
+                     }
+                  },
+                  child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 260),
+                      opacity: appeared ? 1.0 : 0.0,
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 220),
+                        scale: linking ? 1.06 : 1.0,
+                        child: _buildNodeShape(node, color, linking),
+                      ),
                     ),
-                  ),
+                ),
               ),
             ),
 

@@ -149,7 +149,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
   late String _myUserId;
   
   // Interaction Mode
-  bool _isPanMode = true; // Default to Pan for better mobile UX
+  bool _isPanMode = false; // Default to Edit Mode (Select)
 
   // Interaction
   String? _selectedId;
@@ -664,6 +664,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                       title: 'Flowchart',
                       iconPath: 'assets/svg/flowchart_custom.svg',
                       canEdit: widget.canEdit,
+                      onBack: () => Navigator.of(context).pop(),
                       activeUsers: const ['Alice', 'Bob', 'Charlie'],
                       isPanMode: _isPanMode,
                       onModeChanged: (v) => setState(() => _isPanMode = v),

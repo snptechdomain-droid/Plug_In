@@ -132,7 +132,7 @@ class RolePermissions {
             'view_members',
             'view_announcements',
             'view_collaboration',
-            'create_collaboration',
+            // 'create_collaboration', // Removed per user request
           ],
         );
       case UserRole.guest:

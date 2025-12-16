@@ -691,6 +691,18 @@ class RoleBasedDatabaseService {
     return null;
   }
 
+  Future<bool> deleteProject(String projectId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('${_getBaseUrl()}/api/projects/$projectId'),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error deleting project: $e');
+      return false;
+    }
+  }
+
   Future<bool> addMemberToProject(String projectId, String username, {String role = 'EDITOR'}) async {
     try {
       final response = await http.post(
