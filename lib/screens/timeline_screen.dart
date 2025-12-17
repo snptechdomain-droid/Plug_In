@@ -126,21 +126,20 @@ class _TimelineScreenState extends State<TimelineScreen> {
     }
 
     if (data is List) {
-      final List<Map<String, dynamic>> loaded = [];
-      for (final item in data) {
-         if (item == null) continue;
-         try {
-           final m = _sanitizeMilestone(Map<String, dynamic>.from(item));
-           if (m.isNotEmpty) {
-             loaded.add(m);
+      try {
+        final List<Map<String, dynamic>> loaded = data.map((item) {
+           if (item is Map) {
+             return _sanitizeMilestone(Map<String, dynamic>.from(item));
            }
-         } catch (e) { 
-           print('Error processing timeline item: $e');
-         }
+           return <String, dynamic>{};
+        }).where((m) => m.isNotEmpty).toList().cast<Map<String, dynamic>>();
+
+        setState(() {
+          _milestones = loaded;
+        });
+      } catch (e) {
+        print('Error converting timeline list: $e');
       }
-      setState(() {
-        _milestones = loaded;
-      });
     }
   }
 

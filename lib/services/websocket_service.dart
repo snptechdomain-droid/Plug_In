@@ -50,9 +50,12 @@ class WebSocketService {
           _scheduleReconnect(projectId, userId);
         },
         onDisconnect: (frame) {
-           print('Disconnected');
+           print('Disconnected: ${frame.body}');
            _scheduleReconnect(projectId, userId);
         },
+        heartbeatOutgoing: const Duration(seconds: 10),
+        heartbeatIncoming: const Duration(seconds: 10),
+        connectionTimeout: const Duration(seconds: 15),
       ),
     );
 

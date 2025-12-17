@@ -51,11 +51,23 @@ class Minimap extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: LayoutBuilder(
           builder: (context, constraints) {
+            final double viewScale = viewTransform.getMaxScaleOnAxis();
+            final double transX = viewTransform.getTranslation().x;
+            final double transY = viewTransform.getTranslation().y;
+            
+            // World coordinate of top-left screen corner (0,0)
+            final double viewLeft = -transX / viewScale;
+            final double viewTop = -transY / viewScale;
+            final double viewW = viewportSize.width / viewScale;
+            final double viewH = viewportSize.height / viewScale;
+            final double viewRight = viewLeft + viewW;
+            final double viewBottom = viewTop + viewH;
+
             double minX = double.infinity, minY = double.infinity;
             double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
 
             if (items.isEmpty) {
-              minX = 0; minY = 0; maxX = 1000; maxY = 1000;
+              minX = viewLeft; minY = viewTop; maxX = viewRight; maxY = viewBottom;
             } else {
               for (var item in items) {
                 if (item.x < minX) minX = item.x;
@@ -63,44 +75,25 @@ class Minimap extends StatelessWidget {
                 if (item.x + item.width > maxX) maxX = item.x + item.width;
                 if (item.y + item.height > maxY) maxY = item.y + item.height;
               }
-              // Add some padding to the world bounds
-              minX -= 1000; minY -= 1000; maxX += 1000; maxY += 1000;
             }
+            
+            // Ensure bounds include the viewport (so yellow box never disappears)
+            if (viewLeft < minX) minX = viewLeft;
+            if (viewTop < minY) minY = viewTop;
+            if (viewRight > maxX) maxX = viewRight;
+            if (viewBottom > maxY) maxY = viewBottom;
+
+            // Add padding
+            minX -= 500; minY -= 500; maxX += 500; maxY += 500;
 
             final double worldW = maxX - minX;
             final double worldH = maxY - minY;
             
-            // Avoid division by zero
             if (worldW <= 0 || worldH <= 0) return const SizedBox();
 
             final double scaleX = constraints.maxWidth / worldW;
             final double scaleY = constraints.maxHeight / worldH;
             final double scale = scaleX < scaleY ? scaleX : scaleY;
-
-            // Calculate view rectangle in world coordinates
-            // Transform: Matrix4 that maps Local -> Screen
-            // We need the inverse to map Screen -> Local (World)
-            // However, usually transform is World -> Screen? 
-            // In InteractiveViewer, transformationController.value is the matrix that transforms the child.
-            // So Point_Screen = Matrix * Point_World
-            // Point_World = Matrix_Inverse * Point_Screen
-            
-            // Actually, InteractiveViewer's matrix is:
-            // Scale * Translation
-            // So: Screen = (World + Translation) * Scale  <-- No, usually T * S or S * T
-            // Let's look at the matrix values.
-            // It's usually a translation and uniform scale.
-            
-            final double viewScale = viewTransform.getMaxScaleOnAxis();
-            final double transX = viewTransform.getTranslation().x;
-            final double transY = viewTransform.getTranslation().y;
-            
-            // World coordinate of top-left screen corner (0,0)
-            // 0 = (WorldX * Scale) + TransX  => WorldX = -TransX / Scale
-            final double viewLeft = -transX / viewScale;
-            final double viewTop = -transY / viewScale;
-            final double viewW = viewportSize.width / viewScale;
-            final double viewH = viewportSize.height / viewScale;
 
             return Stack(
               children: [

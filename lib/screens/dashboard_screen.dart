@@ -10,7 +10,9 @@ import 'dart:math' as math; // For math operations in custom painter
 import 'package:app/services/theme_service.dart';
 import 'package:app/widgets/glass_container.dart'; // Import GlassContainer
 import 'dart:convert'; // For base64Decode
+import 'dart:convert'; // For base64Decode
 import 'package:lottie/lottie.dart'; // Import Lottie
+import 'package:shared_preferences/shared_preferences.dart';
 
 // --- Assuming these screen imports exist in your project ---
 import 'package:app/models/role.dart';
@@ -124,6 +126,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   }
 
   Future<void> _loadUnreadAnnouncements() async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+
+    if (!notificationsEnabled) {
+      if (mounted) setState(() => _unreadAnnouncements = 0);
+      return; 
+    }
+
     final roleDatabase = RoleBasedDatabaseService();
     final user = await roleDatabase.getCurrentUser();
     if (user != null) {
@@ -132,6 +142,22 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         setState(() {
           _unreadAnnouncements = count;
         });
+
+        // "Notification" simulation
+        if (count > 0) {
+           ScaffoldMessenger.of(context).showSnackBar(
+             SnackBar(
+               content: Text('You have $count unread announcements!'),
+               action: SnackBarAction(
+                 label: 'VIEW',
+                 onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnnouncementsScreen()));
+                 },
+               ),
+               behavior: SnackBarBehavior.floating,
+             ),
+           );
+        }
       }
     }
   }
@@ -556,61 +582,17 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         color: theme.scaffoldBackgroundColor,
         border: Border(bottom: BorderSide(color: theme.dividerColor)),
       ), 
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: primaryColor.withOpacity(0.3),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: CircleAvatar(
-              radius: 30,
-              backgroundColor: primaryColor,
-              backgroundImage: (_currentUserAvatar != null && _currentUserAvatar!.isNotEmpty)
-                  ? (_currentUserAvatar!.startsWith('http')
-                      ? NetworkImage(_currentUserAvatar!)
-                      : (() {
-                          try {
-                            return MemoryImage(base64Decode(_currentUserAvatar!.contains(',') ? _currentUserAvatar!.split(',').last : _currentUserAvatar!));
-                          } catch (e) {
-                            print('Error decoding avatar: $e');
-                            return null;
-                          }
-                        })() as ImageProvider?)
-                  : null,
-              child: (_currentUserAvatar == null || _currentUserAvatar!.isEmpty)
-                  ? Text(
-                      _currentUsername.isNotEmpty ? _currentUsername.substring(0, 1).toUpperCase() : 'U',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        color: theme.colorScheme.onPrimary, 
-                        fontWeight: FontWeight.bold,
-                      ),
-                    )
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Welcome,', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
-              Text(
-                _currentUsername,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: appBarTextColor
-                ),
-              ),
-            ],
-          ),
+           Text('Welcome,', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+           Text(
+             _currentUsername,
+             style: theme.textTheme.headlineSmall?.copyWith(
+               fontWeight: FontWeight.bold,
+               color: appBarTextColor
+             ),
+           ),
         ],
       ),
     );

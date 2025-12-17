@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:app/screens/user_attendance_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,6 +23,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadCurrentUser();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
+        _currentLanguage = prefs.getString('language') ?? 'English';
+      });
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -73,8 +85,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: Colors.orange,
             title: 'Enable Notifications',
             value: _notificationsEnabled,
-            onChanged: (val) =>
-                setState(() => _notificationsEnabled = val),
+            onChanged: (val) async {
+              setState(() => _notificationsEnabled = val);
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('notifications_enabled', val);
+            },
           ),
           _SettingsSwitchTile(
             icon: Icons.vibration_rounded,
@@ -105,16 +120,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
                 : null,
           ),
-          _SettingsTile(
-            icon: Icons.person,
-            color: Colors.teal,
-            title: 'Edit Profile',
-            subtitle: 'Update your name and bio',
-            onTap: () => _showEditProfileDialog(context),
-            customImage: (_currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty)
-                ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
-                : null,
-          ),
+
           _SettingsTile(
             icon: Icons.history,
             color: Colors.blueAccent,
@@ -208,11 +214,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => SimpleDialog(
         title: const Text('Select Language'),
-        children: ['English', 'Español', 'Français', 'Deutsch']
+        children: ['English', 'Tamil']
             .map(
               (lang) => SimpleDialogOption(
-                onPressed: () {
+                onPressed: () async {
                   setState(() => _currentLanguage = lang);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('language', lang);
                   Navigator.pop(context);
                 },
                 child: Text(

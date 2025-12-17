@@ -1,61 +1,90 @@
 # Slug N Plug (SnP) Club App 🐌⚡
 
-A modern, cross-platform mobile application for the **Slug N Plug** club, built with **Flutter** (Frontend) and **Spring Boot** (Backend) with **MongoDB**.
+Welcome to the official **Slug N Plug** collaborative platform! This application serves as the digital hub for our club, empowering members with real-time collaboration tools, event management, and seamless communication.
 
-## 🚀 Features
+## 🌟 Availability
 
-*   **Role-Based Access Control**: Admins, Moderators, Event Coordinators, and Members.
-*   **Attendance Tracking**: Detailed session history, stats, and manual marking.
-*   **Event Management**: Create, edit, and view club events.
-*   **Collaboration Tools**: Real-time mindmaps, flowcharts, and whiteboards.
-*   **modern UI**: Glassmorphism design, dark/light mode, and smooth animations.
+The SnP App is designed to be accessible everywhere:
+*   **🌐 Web Service**: Use it directly in your browser without installation.
+*   **📱 Android APK**: Experience full native performance on your mobile device.
+
+## 🚀 Key Features
+
+### 🤝 Collaboration Suite
+*   **Mindmaps**: Visualize ideas with dynamic, color-coded nodes.
+*   **Flowcharts**: Design processes and user flows with ease.
+*   **Timelines**: Plan projects and track milestones.
+*   **Live Updates**: All changes sync in real-time across the team.
+
+### 🏛️ Club Management
+*   **Role-Based Access**: Specialized views for Admins, Moderators, and Members.
+*   **Attendance Tracking**: QR-based or manual attendance with detailed stats.
+*   **Event Hub**: Browse upcoming workshops, hackathons, and meetups.
+*   **Polls & Voting**: Democratize decision-making with integrated polling.
+
+### 🎨 Modern Experience
+*   **Glassmorphism UI**: A stunning, premium aesthetic.
+*   **Dark/Light Mode**: Fully adaptive theming.
+*   **Multi-language Support**: English and Tamil localization.
+
+---
 
 ## 🛠️ Tech Stack
 
-### Frontend (User App)
-*   **Framework**: Flutter (Dart)
-*   **State Management**: `setState` (Local) + Services
-*   **Design**: Custom Glassmorphism Theme
+**Frontend (Mobile & Web)**
+*   **Framework**: Flutter 3.x
+*   **State Management**: `setState` & Services (Clean Architecture)
+*   **Design**: Custom Glassmorphism System
 
-### Backend (Server)
-*   **Framework**: Spring Boot (Java)
+**Backend (API Server)**
+*   **Framework**: Spring Boot 3.x (Java 17)
 *   **Database**: MongoDB
-*   **Security**: Spring Security + JWT (Stateless)
-*   **Build Tool**: Maven
-
-## 📦 Installation & Setup
-
-### Prerequisites
-*   Flutter SDK (3.x+)
-*   Java JDK (17+)
-*   MongoDB (Local or Atlas)
-
-### 1. Backend Setup
-```bash
-cd backend
-# Configure your MongoDB URI in src/main/resources/application.properties if needed
-mvn spring-boot:run
-```
-The server will start on `http://localhost:8080`.
-
-### 2. Frontend Setup
-```bash
-# In the root 'app' directory
-flutter pub get
-flutter run
-```
-
-## 📱 Screenshots
-
-*(Add your screenshots here)*
-
-## 🤝 Contribution
-
-1.  Fork the repository
-2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4.  Push to the branch (`git push origin feature/AmazingFeature`)
-5.  Open a Pull Request
+*   **Communication**: WebSocket (Stomp) & REST API
 
 ---
-© 2025 Slug N Plug
+
+## 🚀 Deployment Guide
+
+### Vercel (Web Hosting)
+This project is configured for one-click deployment on Vercel.
+
+1.  **Prerequisite**: Ensure you have the `vercel_build.sh` script and `vercel.json` config in the root.
+2.  **Settings**:
+    *   **Framework Preset**: Other
+    *   **Build Command**: `bash vercel_build.sh`
+    *   **Output Directory**: `build/web`
+3.  **Deploy**: Connect your Git repository to Vercel and push.
+
+### Android Build
+To generate the APK for distribution:
+
+```bash
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
+```
+
+## 📦 Local Development
+
+1.  **Clone the Repo**:
+    ```bash
+    git clone https://github.com/your-org/snp-app.git
+    cd snp-app
+    ```
+
+2.  **Install Dependencies**:
+    ```bash
+    flutter pub get
+    ```
+
+3.  **Run**:
+    ```bash
+    flutter run
+    ```
+
+---
+
+## 🤝 Contributing
+We welcome contributions from the community! Please read our `CONTRIBUTING.md` (if available) or simply fork the repo and open a Pull Request.
+
+---
+© 2025 Slug N Plug Club

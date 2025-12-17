@@ -48,3 +48,7 @@ backend/help.md
 .idea
 .vscode
 *.iml
+
+# Deployment / Local Build
+.vercel
+flutter/

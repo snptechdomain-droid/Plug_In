@@ -10,7 +10,10 @@ import 'timeline_screen.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/services/websocket_service.dart';
 import 'package:app/models/role.dart';
-import 'package:app/widgets/project_card.dart'; // Import the new widget
+import 'package:app/widgets/creative_toolbar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app/utils/app_strings.dart'; // Import the new widget
+import 'package:app/widgets/project_card.dart'; // Restored import
 
 class CollaborationScreen extends StatefulWidget {
   const CollaborationScreen({super.key});
@@ -23,7 +26,8 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
   Map<String, dynamic>? _selectedProject;
   late TabController _tabController;
   late String _currentUserEmail;
-  String _displayName = 'User';
+  String _displayName = '';
+  String _currentLang = 'English'; // Default Language
   UserRole? _currentUserRole; // Added to track role
   late AnimationController _fabController;
   late Animation<double> _fabAnimation;
@@ -90,6 +94,9 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     _displayName = user.username;
     _currentUserRole = user.role; // Store role
 
+    final prefs = await SharedPreferences.getInstance();
+    _currentLang = prefs.getString('language') ?? 'English';
+
     final projects = await _roleDatabase.getUserProjects(_currentUserEmail);
     
     if (mounted) {
@@ -130,7 +137,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
   // Actually, I will replacing from line 25 to 113 roughly.
 
 
-  void _openProject(Map<String, dynamic> project) {
+  Future<void> _openProject(Map<String, dynamic> project) async {
     setState(() => _selectedProject = project);
     // WebSocket connection is handled by the specific screen (MindmapScreen, etc.)
     // WebSocketService().connect(project['id'], _currentUserEmail);
@@ -148,7 +155,11 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
            if (c.toolData.containsKey('mindmap_nodes') || c.toolData.containsKey('mindmapData')) {
              if (c.toolData['mindmap_nodes'] != null) {
                 try {
-                  mmData = jsonEncode({'nodes': c.toolData['mindmap_nodes']});
+                  mmData = jsonEncode({
+                    'nodes': c.toolData['mindmap_nodes'],
+                    'view': c.toolData['mindmap_view'], // Persist Viewport
+                    'annotations': c.toolData['mindmap_annotations'], // Persist Annotations
+                  });
                 } catch (e) {
                   print('ERROR encoding mindmap nodes: $e');
                 }
@@ -222,9 +233,11 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
        );
     }
 
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => screen),
     );
+    // Refresh data when returning from editor to ensure we have the latest updates
+    await _loadData();
   }
 
   @override
@@ -281,11 +294,11 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                             unselectedLabelColor: isDark ? Colors.grey : Colors.black54,
                             indicatorSize: TabBarIndicatorSize.label,
                             labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                            tabs: const [
-                              Tab(text: 'Projects'),
-                              Tab(text: 'Polls'),
-                              Tab(text: 'Templates'),
-                            ],
+                            tabs: [
+                    Tab(text: AppStrings.tr('projects', _currentLang)),
+                    Tab(text: AppStrings.tr('polls', _currentLang)),
+                    Tab(text: AppStrings.tr('templates', _currentLang)), // "Templates"
+                  ],
                           ),
                         ),
                       ),
@@ -334,7 +347,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Good Morning,',
+                    AppStrings.tr('welcome', _currentLang),
                     style: TextStyle(
                       fontSize: 14, 
                       color: isDark ? Colors.grey[400] : Colors.grey[700],
@@ -352,13 +365,13 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
               ),
               const Spacer(),
               // Mini Stats
-              _buildMiniStat('Projects', '${_projects.length}', isDark),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+            _buildMiniStat(AppStrings.tr('projects', _currentLang), '${_projects.length}', isDark),
+          ],
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildMiniStat(String label, String value, bool isDark) {
     return Container(
@@ -385,14 +398,14 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-             Icon(Icons.folder_open, size: 64, color: Colors.grey.shade400),
-             const SizedBox(height: 16),
-             Text('No projects found', style: TextStyle(color: Colors.grey.shade600)),
-             if (_canCreate)
-               TextButton(onPressed: () => _createNewProject(type: 'Mindmap'), child: const Text('Create your first project')),
-             if (!_canCreate)
-               const Text('You do not have permission to create projects.', style: TextStyle(color: Colors.grey, fontSize: 12)),
-          ],
+           Icon(Icons.folder_open, size: 64, color: Colors.grey.shade400),
+           const SizedBox(height: 16),
+           Text(AppStrings.tr('no_projects', _currentLang), style: TextStyle(color: Colors.grey.shade600)),
+           if (_canCreate)
+             TextButton(onPressed: () => _createNewProject(type: 'Mindmap'), child: Text(AppStrings.tr('create_first', _currentLang))),
+           if (!_canCreate)
+             const Text('You do not have permission to create projects.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+        ],
         ),
       );
     }
@@ -784,11 +797,12 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     }
 
     final templates = [
-      {'title': 'Brainstorming', 'type': 'Mindmap', 'desc': 'Central idea with branches', 'icon': Icons.psychology, 'color': Colors.orangeAccent},
-      {'title': 'Project Roadmap', 'type': 'Timeline', 'desc': 'Quarterly phases setup', 'icon': Icons.timeline, 'color': Colors.blueAccent},
-      {'title': 'User Flow', 'type': 'Flowchart', 'desc': 'Start to End process', 'icon': Icons.account_tree, 'color': Colors.greenAccent},
-      {'title': 'SWOT Analysis', 'type': 'Mindmap', 'desc': 'Strengths, Weaknesses, etc', 'icon': Icons.grid_view, 'color': Colors.purpleAccent},
-    ];
+    {'key': 'brainstorming', 'title': AppStrings.tr('brainstorming', _currentLang), 'type': 'Mindmap', 'desc': 'Central idea with branches', 'icon': Icons.psychology, 'color': Colors.orangeAccent},
+    {'key': 'swot', 'title': AppStrings.tr('strategic_plan', _currentLang) + ' (SWOT)', 'type': 'Mindmap', 'desc': 'Strengths, Weaknesses...', 'icon': Icons.grid_view, 'color': Colors.blueAccent},
+    {'key': 'timeline', 'title': AppStrings.tr('project_timeline', _currentLang), 'type': 'Timeline', 'desc': 'Phases and Milestones', 'icon': Icons.timeline, 'color': Colors.green},
+    {'key': 'flowchart', 'title': AppStrings.tr('flowchart', _currentLang), 'type': 'Flowchart', 'desc': 'Process diagram', 'icon': Icons.account_tree, 'color': Colors.purple},
+    {'key': 'task', 'title': AppStrings.tr('task_breakdown', _currentLang), 'type': 'Mindmap', 'desc': 'Divide and Conquer', 'icon': Icons.list_alt, 'color': Colors.teal},
+  ];
 
     return GridView.builder(
       padding: const EdgeInsets.all(16),
@@ -802,7 +816,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
       itemBuilder: (context, index) {
         final t = templates[index];
         return InkWell(
-          onTap: () => _createFromTemplate(t['type'] as String, t['title'] as String),
+          onTap: () => _createFromTemplate(t['type'] as String, t['title'] as String, t['key'] as String), // Pass Key
           borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
@@ -823,7 +837,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                   child: Icon(t['icon'] as IconData, color: t['color'] as Color),
                 ),
                 const SizedBox(height: 12),
-                Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), textAlign: TextAlign.center),
                 const SizedBox(height: 4),
                 Text(t['desc'] as String, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
               ],
@@ -834,7 +848,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     );
   }
 
-  Future<void> _createFromTemplate(String type, String templateName) async {
+  Future<void> _createFromTemplate(String type, String templateName, String templateKey) async {
     final titleCtrl = TextEditingController(text: '$templateName Project');
     final confirm = await showDialog<bool>(
       context: context,
@@ -860,47 +874,47 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     String? mmData, fcData, tlData;
     
 
-    if (templateName == 'Brainstorming' && type == 'Mindmap') {
+    if (templateKey == 'brainstorming' && type == 'Mindmap') {
       final rootId = 'root_${DateTime.now().millisecondsSinceEpoch}';
       mmData = jsonEncode({
-        'rootId': rootId,
-        'nodes': [
-          // Central Node
-          {'id': rootId, 'label': 'Core Idea', 'x': 0.0, 'y': 0.0, 'color': 0xFF6200EA, 'iconCodePoint': 0xeb3c}, // Lightbulb
-          // Branch 1 - Top Left
-          {'id': '${rootId}_1', 'parentId': rootId, 'label': 'Concept A', 'x': -200.0, 'y': -150.0, 'color': 0xFF00BFA5, 'iconCodePoint': 0xe3e3}, // Star
-          {'id': '${rootId}_1_1', 'parentId': '${rootId}_1', 'label': 'Detail 1', 'x': -350.0, 'y': -200.0, 'color': 0xFF00BFA5},
-          {'id': '${rootId}_1_2', 'parentId': '${rootId}_1', 'label': 'Detail 2', 'x': -350.0, 'y': -100.0, 'color': 0xFF00BFA5},
-          // Branch 2 - Top Right
-          {'id': '${rootId}_2', 'parentId': rootId, 'label': 'Concept B', 'x': 200.0, 'y': -150.0, 'color': 0xFFFFAB00, 'iconCodePoint': 0xf04b}, // Finance
-          {'id': '${rootId}_2_1', 'parentId': '${rootId}_2', 'label': 'Pro A', 'x': 350.0, 'y': -200.0, 'color': 0xFFFFAB00},
-          {'id': '${rootId}_2_2', 'parentId': '${rootId}_2', 'label': 'Con A', 'x': 350.0, 'y': -100.0, 'color': 0xFFFFAB00},
-          // Branch 3 - Bottom Left
-          {'id': '${rootId}_3', 'parentId': rootId, 'label': 'Concept C', 'x': -200.0, 'y': 150.0, 'color': 0xFF2962FF, 'iconCodePoint': 0xe84f}, // Build
-          {'id': '${rootId}_3_1', 'parentId': '${rootId}_3', 'label': 'Cost', 'x': -350.0, 'y': 100.0, 'color': 0xFF2962FF},
-          // Branch 4 - Bottom Right
-          {'id': '${rootId}_4', 'parentId': rootId, 'label': 'Concept D', 'x': 200.0, 'y': 150.0, 'color': 0xFFD500F9, 'iconCodePoint': 0xea80}, // Rocket
-          {'id': '${rootId}_4_1', 'parentId': '${rootId}_4', 'label': 'Risks', 'x': 350.0, 'y': 100.0, 'color': 0xFFD500F9},
+         'rootId': rootId,
+         'nodes': [
+            {'id': rootId, 'label': 'Core Idea', 'x': 0.0, 'y': 0.0, 'color': 0xFF6200EA, 'iconCodePoint': 0xeb3c}, // Lightbulb
+            {'id': '${rootId}_1', 'parentId': rootId, 'label': 'Concept A', 'x': -200.0, 'y': -150.0, 'color': 0xFF00BFA5},
+            {'id': '${rootId}_1_1', 'parentId': '${rootId}_1', 'label': 'Detail 1', 'x': -350.0, 'y': -200.0, 'color': 0xFF00BFA5},
+            {'id': '${rootId}_1_2', 'parentId': '${rootId}_1', 'label': 'Detail 2', 'x': -350.0, 'y': -100.0, 'color': 0xFF00BFA5},
+            {'id': '${rootId}_2', 'parentId': rootId, 'label': 'Concept B', 'x': 200.0, 'y': -150.0, 'color': 0xFFFFAB00},
+            {'id': '${rootId}_2_1', 'parentId': '${rootId}_2', 'label': 'Pro A', 'x': 350.0, 'y': -200.0, 'color': 0xFFFFAB00},
+            {'id': '${rootId}_2_2', 'parentId': '${rootId}_2', 'label': 'Con A', 'x': 350.0, 'y': -100.0, 'color': 0xFFFFAB00},
+            {'id': '${rootId}_3', 'parentId': rootId, 'label': 'Concept C', 'x': -200.0, 'y': 150.0, 'color': 0xFF2962FF},
+            {'id': '${rootId}_3_1', 'parentId': '${rootId}_3', 'label': 'Cost', 'x': -350.0, 'y': 100.0, 'color': 0xFF2962FF},
+            {'id': '${rootId}_4', 'parentId': rootId, 'label': 'Concept D', 'x': 200.0, 'y': 150.0, 'color': 0xFFD500F9},
+            {'id': '${rootId}_4_1', 'parentId': '${rootId}_4', 'label': 'Risks', 'x': 350.0, 'y': 100.0, 'color': 0xFFD500F9},
+         ],
+         'annotations': [
+            {'id': '${rootId}_parking', 'x': 500.0, 'y': -400.0, 'width': 300.0, 'height': 200.0, 'label': 'Parking Lot', 'text': 'Ideas for later...', 'color': 0xFF9E9E9E.toInt()},
+         ]
+      });
+    } else if (templateKey == 'timeline' && type == 'Timeline') {
+      tlData = jsonEncode({
+        'items': [
+          {'id': 'm1', 'label': 'Q1: Planning', 'x': 100.0, 'y': -50.0, 'color': 0xFF2196F3, 'notes': 'Define scope & requirements', 'link': 'https://jira.com/planning'},
+          {'id': 'm2', 'label': 'Q2: Design', 'x': 400.0, 'y': 50.0, 'color': 0xFF9C27B0, 'notes': 'UI/UX Prototypes', 'link': 'https://figma.com/file/123'},
+          {'id': 'm3', 'label': 'Q3: Development', 'x': 700.0, 'y': -50.0, 'color': 0xFF4CAF50, 'notes': 'MVP Build'},
+          {'id': 'm4', 'label': 'Q4: Launch', 'x': 1000.0, 'y': 50.0, 'color': 0xFFFF9800, 'notes': 'Go-to-market', 'link': 'https://launch.com'},
+          {'id': 'm5', 'label': 'Post-Launch', 'x': 1300.0, 'y': 0.0, 'color': 0xFF607D8B, 'notes': 'Feedback loop'},
         ]
       });
-    } else if (templateName == 'Project Roadmap' && type == 'Timeline') {
-      tlData = jsonEncode([
-        {'id': 'm1', 'label': 'Q1: Planning', 'x': 100.0, 'y': -50.0, 'color': 0xFF2196F3, 'notes': 'Define scope & requirements', 'link': 'https://jira.com/planning'},
-        {'id': 'm2', 'label': 'Q2: Design', 'x': 400.0, 'y': 50.0, 'color': 0xFF9C27B0, 'notes': 'UI/UX Prototypes', 'link': 'https://figma.com/file/123'},
-        {'id': 'm3', 'label': 'Q3: Development', 'x': 700.0, 'y': -50.0, 'color': 0xFF4CAF50, 'notes': 'MVP Build'},
-        {'id': 'm4', 'label': 'Q4: Launch', 'x': 1000.0, 'y': 50.0, 'color': 0xFFFF9800, 'notes': 'Go-to-market', 'link': 'https://launch.com'},
-        {'id': 'm5', 'label': 'Post-Launch', 'x': 1300.0, 'y': 0.0, 'color': 0xFF607D8B, 'notes': 'Feedback loop'},
-      ]);
-    } else if (templateName == 'User Flow' && type == 'Flowchart') {
+    } else if (templateKey == 'flowchart' && type == 'Flowchart') {
       fcData = jsonEncode({
         'nodes': [
-          {'id': 'n1', 'label': 'Start', 'x': 300.0, 'y': 50.0, 'shape': 'circle', 'width': 100.0, 'height': 50.0},
-          {'id': 'n2', 'label': 'Login Page', 'x': 250.0, 'y': 150.0, 'shape': 'rectangle', 'width': 200.0, 'height': 80.0},
-          {'id': 'n3', 'label': 'Enter Creds', 'x': 250.0, 'y': 280.0, 'shape': 'parallelogram', 'width': 200.0, 'height': 80.0},
-          {'id': 'n4', 'label': 'Valid?', 'x': 280.0, 'y': 400.0, 'shape': 'diamond', 'width': 140.0, 'height': 100.0},
-          {'id': 'n5', 'label': 'Dashboard', 'x': 250.0, 'y': 550.0, 'shape': 'rectangle', 'width': 200.0, 'height': 80.0},
-          {'id': 'n6', 'label': 'Error Msg', 'x': 500.0, 'y': 410.0, 'shape': 'rectangle', 'width': 150.0, 'height': 80.0},
-          {'id': 'n7', 'label': 'End', 'x': 300.0, 'y': 700.0, 'shape': 'circle', 'width': 100.0, 'height': 50.0},
+          {'id': 'n1', 'label': 'Start', 'x': 300.0, 'y': 50.0, 'shape': 3, 'color': 0xFF4CAF50, 'width': 100.0, 'height': 50.0}, // Circle
+          {'id': 'n2', 'label': 'Login Page', 'x': 250.0, 'y': 150.0, 'shape': 0, 'color': 0xFF2196F3, 'width': 200.0, 'height': 80.0}, // Rect
+          {'id': 'n3', 'label': 'Enter Creds', 'x': 250.0, 'y': 280.0, 'shape': 5, 'color': 0xFF64B5F6, 'width': 200.0, 'height': 80.0}, // Parallelogram
+          {'id': 'n4', 'label': 'Valid?', 'x': 280.0, 'y': 400.0, 'shape': 2, 'color': 0xFFFF9800, 'width': 140.0, 'height': 140.0}, // Diamond
+          {'id': 'n5', 'label': 'Dashboard', 'x': 250.0, 'y': 600.0, 'shape': 0, 'color': 0xFF2196F3, 'width': 200.0, 'height': 80.0}, // Rect
+          {'id': 'n6', 'label': 'Error Msg', 'x': 500.0, 'y': 430.0, 'shape': 1, 'color': 0xFFEF5350, 'width': 150.0, 'height': 80.0}, // Pill
+          {'id': 'n7', 'label': 'End', 'x': 300.0, 'y': 750.0, 'shape': 3, 'color': 0xFF424242, 'width': 100.0, 'height': 50.0}, // Circle
         ],
         'connections': [
            {'id': 'c1', 'fromId': 'n1', 'toId': 'n2', 'label': 'Open App'},
@@ -910,33 +924,62 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
            {'id': 'c5', 'fromId': 'n4', 'toId': 'n6', 'label': 'No'},
            {'id': 'c6', 'fromId': 'n6', 'toId': 'n2', 'label': 'Retry'},
            {'id': 'c7', 'fromId': 'n5', 'toId': 'n7'},
-        ]
+        ],
+        'annotations': []
       });
-    } else if (templateName == 'SWOT Analysis' && type == 'Mindmap') {
+    } else if (templateKey == 'swot' && type == 'Mindmap') {
       final rootId = 'root_${DateTime.now().millisecondsSinceEpoch}';
       mmData = jsonEncode({
         'rootId': rootId,
         'nodes': [
           {'id': rootId, 'label': 'SWOT Analysis', 'x': 0.0, 'y': 0.0, 'color': 0xFF212121, 'iconCodePoint': 0xe06f}, // Assessment
-          // STRENGTHS (Green) - Top Left
-          {'id': 'swot_S', 'parentId': rootId, 'label': 'STRENGTHS', 'x': -300.0, 'y': -200.0, 'color': 0xFF43A047, 'iconCodePoint': 0xe8e8}, // Check circle
+          {'id': 'swot_S', 'parentId': rootId, 'label': 'STRENGTHS', 'x': -300.0, 'y': -200.0, 'color': 0xFF43A047, 'iconCodePoint': 0xe8e8},
           {'id': 'swot_S1', 'parentId': 'swot_S', 'label': 'Internal Positive', 'x': -500.0, 'y': -250.0, 'color': 0xFFA5D6A7},
           {'id': 'swot_S2', 'parentId': 'swot_S', 'label': 'Advantages', 'x': -500.0, 'y': -150.0, 'color': 0xFFA5D6A7},
-          
-          // WEAKNESSES (Red/Orange) - Top Right
-          {'id': 'swot_W', 'parentId': rootId, 'label': 'WEAKNESSES', 'x': 300.0, 'y': -200.0, 'color': 0xFFE53935, 'iconCodePoint': 0xe002}, // Warning
+          {'id': 'swot_W', 'parentId': rootId, 'label': 'WEAKNESSES', 'x': 300.0, 'y': -200.0, 'color': 0xFFE53935, 'iconCodePoint': 0xe002},
           {'id': 'swot_W1', 'parentId': 'swot_W', 'label': 'Internal Negative', 'x': 500.0, 'y': -250.0, 'color': 0xFFEF9A9A},
           {'id': 'swot_W2', 'parentId': 'swot_W', 'label': 'Limitations', 'x': 500.0, 'y': -150.0, 'color': 0xFFEF9A9A},
-          
-          // OPPORTUNITIES (Blue) - Bottom Left
-          {'id': 'swot_O', 'parentId': rootId, 'label': 'OPPORTUNITIES', 'x': -300.0, 'y': 200.0, 'color': 0xFF1E88E5, 'iconCodePoint': 0xea80}, // Rocket
+          {'id': 'swot_O', 'parentId': rootId, 'label': 'OPPORTUNITIES', 'x': -300.0, 'y': 200.0, 'color': 0xFF1E88E5, 'iconCodePoint': 0xea80},
           {'id': 'swot_O1', 'parentId': 'swot_O', 'label': 'External Positive', 'x': -500.0, 'y': 150.0, 'color': 0xFF90CAF9},
           {'id': 'swot_O2', 'parentId': 'swot_O', 'label': 'Trends', 'x': -500.0, 'y': 250.0, 'color': 0xFF90CAF9},
-          
-          // THREATS (Amber) - Bottom Right
-          {'id': 'swot_T', 'parentId': rootId, 'label': 'THREATS', 'x': 300.0, 'y': 200.0, 'color': 0xFFFFB300, 'iconCodePoint': 0xe14b}, // Dangerous
+          {'id': 'swot_T', 'parentId': rootId, 'label': 'THREATS', 'x': 300.0, 'y': 200.0, 'color': 0xFFFFB300, 'iconCodePoint': 0xe14b},
           {'id': 'swot_T1', 'parentId': 'swot_T', 'label': 'External Negative', 'x': 500.0, 'y': 150.0, 'color': 0xFFFFE082},
           {'id': 'swot_T2', 'parentId': 'swot_T', 'label': 'Competitors', 'x': 500.0, 'y': 250.0, 'color': 0xFFFFE082},
+        ],
+        'annotations': [
+           {'id': 'box_S', 'x': -700.0, 'y': -350.0, 'width': 500.0, 'height': 300.0, 'label': 'Strengths Zone', 'text': '', 'color': 0xFF43A047.toInt()},
+           {'id': 'box_W', 'x': 300.0, 'y': -350.0, 'width': 500.0, 'height': 300.0, 'label': 'Weaknesses Zone', 'text': '', 'color': 0xFFE53935.toInt()},
+           {'id': 'box_O', 'x': -700.0, 'y': 100.0, 'width': 500.0, 'height': 300.0, 'label': 'Opportunities Zone', 'text': '', 'color': 0xFF1E88E5.toInt()},
+           {'id': 'box_T', 'x': 300.0, 'y': 100.0, 'width': 500.0, 'height': 300.0, 'label': 'Threats Zone', 'text': '', 'color': 0xFFFFB300.toInt()},
+        ]
+      });
+    } else if (templateKey == 'task' && type == 'Mindmap') {
+      final rootId = 'root_${DateTime.now().millisecondsSinceEpoch}';
+      mmData = jsonEncode({
+        'rootId': rootId,
+        'nodes': [
+          {'id': rootId, 'label': 'Main Task', 'x': 0.0, 'y': 0.0, 'color': 0xFF3F51B5, 'iconCodePoint': 0xe85d}, // Assignment
+          // Phase 1 (Top Left)
+          {'id': 'p1', 'parentId': rootId, 'label': 'Phase 1', 'x': -300.0, 'y': -200.0, 'color': 0xFF5C6BC0},
+          {'id': 'p1_1', 'parentId': 'p1', 'label': 'Step 1.1', 'x': -500.0, 'y': -250.0, 'color': 0xFF7986CB},
+          {'id': 'p1_2', 'parentId': 'p1', 'label': 'Step 1.2', 'x': -500.0, 'y': -150.0, 'color': 0xFF7986CB},
+          // Phase 2 (Top Right)
+          {'id': 'p2', 'parentId': rootId, 'label': 'Phase 2', 'x': 300.0, 'y': -200.0, 'color': 0xFFEC407A},
+          {'id': 'p2_1', 'parentId': 'p2', 'label': 'Step 2.1', 'x': 500.0, 'y': -250.0, 'color': 0xFFF06292},
+          {'id': 'p2_2', 'parentId': 'p2', 'label': 'Step 2.2', 'x': 500.0, 'y': -150.0, 'color': 0xFFF06292},
+          // Phase 3 (Bottom Left)
+          {'id': 'p3', 'parentId': rootId, 'label': 'Phase 3', 'x': -300.0, 'y': 200.0, 'color': 0xFFFFA726},
+          {'id': 'p3_1', 'parentId': 'p3', 'label': 'Step 3.1', 'x': -500.0, 'y': 150.0, 'color': 0xFFFFB74D},
+          {'id': 'p3_2', 'parentId': 'p3', 'label': 'Step 3.2', 'x': -500.0, 'y': 250.0, 'color': 0xFFFFB74D},
+          // Phase 4 (Bottom Right)
+          {'id': 'p4', 'parentId': rootId, 'label': 'Phase 4', 'x': 300.0, 'y': 200.0, 'color': 0xFF66BB6A},
+          {'id': 'p4_1', 'parentId': 'p4', 'label': 'Step 4.1', 'x': 500.0, 'y': 150.0, 'color': 0xFF81C784},
+          {'id': 'p4_2', 'parentId': 'p4', 'label': 'Step 4.2', 'x': 500.0, 'y': 250.0, 'color': 0xFF81C784},
+        ],
+        'annotations': [
+           {'id': 'box_p1', 'x': -650.0, 'y': -350.0, 'width': 450.0, 'height': 300.0, 'label': '@Alice (Lead)', 'text': 'Responsible for Phase 1\n- UI Design\n- Prototypes', 'color': 0xFF5C6BC0},
+           {'id': 'box_p2', 'x': 200.0, 'y': -350.0, 'width': 450.0, 'height': 300.0, 'label': '@Bob (Dev)', 'text': 'Responsible for Phase 2\n- API Integration\n- Database', 'color': 0xFFEC407A},
+           {'id': 'box_p34', 'x': -600.0, 'y': 100.0, 'width': 1200.0, 'height': 350.0, 'label': '@Team (Execution)', 'text': 'Phase 3 & 4 Execution Area', 'color': 0xFF66BB6A},
         ]
       });
     }

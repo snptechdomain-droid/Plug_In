@@ -1104,7 +1104,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                   decoration: BoxDecoration(
                     color: fill.withOpacity(0.2),
                     shape: BoxShape.circle,
-                    borderRadius: BorderRadius.circular(100),
+                    // borderRadius: BorderRadius.circular(100), // Removed: Invalid with BoxShape.circle
                     border: Border.all(
                       color: selected ? Colors.white : fill.withOpacity(0.5),
                       width: selected ? 2 : 1,
