@@ -12,10 +12,12 @@ public class Event {
     private String description;
     private LocalDateTime date;
     private String venue;
-    private boolean isPublic; // To toggle visibility for guests
-    private String createdBy;
+    private boolean registrationStarted;
+    private String imageUrl;
+    private java.util.List<EventRegistration> registrations = new java.util.ArrayList<>();
 
     public Event() {
+        this.registrations = new java.util.ArrayList<>();
     }
 
     public Event(String title, String description, LocalDateTime date, String venue, boolean isPublic,
@@ -26,6 +28,7 @@ public class Event {
         this.venue = venue;
         this.isPublic = isPublic;
         this.createdBy = createdBy;
+        this.registrations = new java.util.ArrayList<>();
     }
 
     // Getters and Setters
@@ -83,5 +86,36 @@ public class Event {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public boolean isRegistrationStarted() {
+        return registrationStarted;
+    }
+
+    public void setRegistrationStarted(boolean registrationStarted) {
+        this.registrationStarted = registrationStarted;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
+    public java.util.List<EventRegistration> getRegistrations() {
+        return registrations;
+    }
+
+    public void setRegistrations(java.util.List<EventRegistration> registrations) {
+        this.registrations = registrations;
+    }
+
+    public void addRegistration(EventRegistration registration) {
+        if (this.registrations == null) {
+            this.registrations = new java.util.ArrayList<>();
+        }
+        this.registrations.add(registration);
     }
 }

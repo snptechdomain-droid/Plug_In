@@ -42,6 +42,8 @@ public class EventController {
             event.setDate(eventDetails.getDate());
             event.setVenue(eventDetails.getVenue());
             event.setPublic(eventDetails.isPublic());
+            event.setRegistrationStarted(eventDetails.isRegistrationStarted());
+            event.setImageUrl(eventDetails.getImageUrl());
             return eventRepository.save(event);
         }).orElseThrow(() -> new RuntimeException("Event not found"));
     }
@@ -49,5 +51,17 @@ public class EventController {
     @DeleteMapping("/{id}")
     public void deleteEvent(@PathVariable String id) {
         eventRepository.deleteById(id);
+    }
+
+    @PostMapping("/{id}/register")
+    public Event registerForEvent(@PathVariable String id,
+            @RequestBody com.snp.backend.model.EventRegistration registration) {
+        return eventRepository.findById(id).map(event -> {
+            if (!event.isRegistrationStarted()) {
+                throw new RuntimeException("Registration is not open for this event.");
+            }
+            event.addRegistration(registration);
+            return eventRepository.save(event);
+        }).orElseThrow(() -> new RuntimeException("Event not found"));
     }
 }
