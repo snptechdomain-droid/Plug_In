@@ -12,3 +12,4 @@ app_port: 7860
 
 Spring Boot Backend for SnP Club Application.
 Deployed on Hugging Face Spaces via Docker.
+Last Deploy Trigger: 2025-12-19
