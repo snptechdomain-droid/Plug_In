@@ -54,10 +54,12 @@ public class AuthController {
             if (user.getPasswordHash() != null
                     && passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
                 return ResponseEntity.ok(user);
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
             }
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Username/Email not found");
         }
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid credentials");
     }
 
     @PostMapping("/register")
