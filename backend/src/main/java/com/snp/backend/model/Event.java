@@ -12,6 +12,8 @@ public class Event {
     private String description;
     private LocalDateTime date;
     private String venue;
+    private boolean isPublic;
+    private String createdBy;
     private boolean registrationStarted;
     private String imageUrl;
     private java.util.List<EventRegistration> registrations = new java.util.ArrayList<>();
