@@ -117,7 +117,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: 'Update your name and bio',
             onTap: () => _showEditProfileDialog(context),
             customImage: (_currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty)
-                ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
+                ? (_currentUser!.avatarUrl!.startsWith('data:image') 
+                    ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
+                    : NetworkImage(_currentUser!.avatarUrl!) as ImageProvider)
                 : null,
           ),
 
@@ -291,7 +293,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       backgroundImage: _newAvatarBase64 != null 
                           ? MemoryImage(base64Decode(_newAvatarBase64!.split(',').last))
                           : (_currentUser?.avatarUrl != null && _currentUser!.avatarUrl!.isNotEmpty)
-                              ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
+                              ? (_currentUser!.avatarUrl!.startsWith('data:image')
+                                  ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
+                                  : NetworkImage(_currentUser!.avatarUrl!) as ImageProvider)
                               : null,
                       child: (_newAvatarBase64 == null && (_currentUser?.avatarUrl == null || _currentUser!.avatarUrl!.isEmpty))
                           ? const Icon(Icons.add_a_photo, size: 40) 

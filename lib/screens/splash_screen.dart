@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/services/auth_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -18,6 +19,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _requestPermissions() async {
+    if (kIsWeb) return; // Permissions are handled differently on web
+    
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
       Permission.storage,
