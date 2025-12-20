@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface AnnouncementRepository extends MongoRepository<Announcement, String> {
     List<Announcement> findAllByOrderByDateDesc();
+
+    void deleteByDateBefore(java.time.Instant date);
 }

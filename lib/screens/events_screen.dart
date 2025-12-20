@@ -193,6 +193,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   isPublic: isPublic,
                   imageUrl: finalBase64Image,
                   registrationStarted: registrationStarted,
+                  createdBy: (await _databaseService.getCurrentUser())?.username ?? 'Admin',
                 ).toJson();
                 
                 if (isEditing) {

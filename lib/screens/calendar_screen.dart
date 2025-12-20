@@ -270,7 +270,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     date: selectedTime, 
                     type: type,
                     venue: venueCtrl.text,
-                    createdBy: 'admin' // Should fetch real user
+                    createdBy: (await _roleService.getCurrentUser())?.username ?? 'Admin'
                   );
                   await _service.createScheduleEntry(entry);
                   Navigator.pop(context);

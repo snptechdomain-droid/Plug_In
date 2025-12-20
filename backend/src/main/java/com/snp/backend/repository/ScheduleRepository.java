@@ -7,4 +7,6 @@ import java.util.List;
 
 public interface ScheduleRepository extends MongoRepository<ScheduleEntry, String> {
     List<ScheduleEntry> findByDateBetween(LocalDateTime start, LocalDateTime end);
+
+    void deleteByDateBefore(LocalDateTime date);
 }
