@@ -62,9 +62,15 @@ public class ScheduleController {
         // 2. Integrate with Announcements: Notify on Create OR Update
         try {
             String author = saved.getCreatedBy() != null ? saved.getCreatedBy() : "System";
-            String action = isUpdate ? "updated" : "added";
             String title = "Schedule Update";
-            String content = String.format("A schedule entry '%s' was %s by %s.", saved.getTitle(), action, author);
+            String content;
+
+            if (saved.getVenue() != null && !saved.getVenue().isEmpty()) {
+                content = String.format("An offline meet has been scheduled by %s at %s.", author, saved.getVenue());
+            } else {
+                content = String.format("A schedule entry '%s' was %s by %s.", saved.getTitle(),
+                        isUpdate ? "updated" : "added", author);
+            }
 
             Announcement announcement = new Announcement(title, content, author);
             announcementRepository.save(announcement);

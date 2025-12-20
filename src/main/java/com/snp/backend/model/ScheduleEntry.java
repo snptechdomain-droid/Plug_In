@@ -12,16 +12,19 @@ public class ScheduleEntry {
     private String description;
     private LocalDateTime date; // For specific date and time
     private String type; // CLASS, EXAM, HOLIDAY, MEETING
+    private String venue;
     private String createdBy;
 
     public ScheduleEntry() {
     }
 
-    public ScheduleEntry(String title, String description, LocalDateTime date, String type, String createdBy) {
+    public ScheduleEntry(String title, String description, LocalDateTime date, String type, String venue,
+            String createdBy) {
         this.title = title;
         this.description = description;
         this.date = date;
         this.type = type;
+        this.venue = venue;
         this.createdBy = createdBy;
     }
 
@@ -63,6 +66,14 @@ public class ScheduleEntry {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getVenue() {
+        return venue;
+    }
+
+    public void setVenue(String venue) {
+        this.venue = venue;
     }
 
     public String getCreatedBy() {

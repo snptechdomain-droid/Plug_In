@@ -15,6 +15,9 @@ public class EventController {
     @Autowired
     private EventRepository eventRepository;
 
+    @Autowired
+    private com.snp.backend.repository.AnnouncementRepository announcementRepository;
+
     @GetMapping
     public List<Event> getAllEvents() {
         return eventRepository.findAll();
@@ -31,7 +34,22 @@ public class EventController {
         if (event.getDate() == null) {
             event.setDate(LocalDateTime.now());
         }
-        return eventRepository.save(event);
+        Event savedEvent = eventRepository.save(event);
+
+        // Automatically create an announcement
+        try {
+            com.snp.backend.model.Announcement announcement = new com.snp.backend.model.Announcement();
+            announcement.setTitle("New Event: " + savedEvent.getTitle());
+            announcement.setContent(savedEvent.getDescription());
+            announcement.setAuthorName(savedEvent.getCreatedBy() != null ? savedEvent.getCreatedBy() : "Admin");
+            announcement.setDate(java.time.Instant.now());
+            announcementRepository.save(announcement);
+        } catch (Exception e) {
+            // Log error but don't fail event creation
+            System.err.println("Failed to create announcement for event: " + e.getMessage());
+        }
+
+        return savedEvent;
     }
 
     @PutMapping("/{id}")
