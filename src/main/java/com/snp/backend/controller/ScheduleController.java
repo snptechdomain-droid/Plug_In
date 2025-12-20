@@ -66,10 +66,10 @@ public class ScheduleController {
             String content;
 
             if (saved.getVenue() != null && !saved.getVenue().isEmpty()) {
-                content = String.format("An offline meet has been scheduled by %s at %s.", author, saved.getVenue());
+                content = String.format("A %s has been scheduled by %s at %s.", saved.getType(), author,
+                        saved.getVenue());
             } else {
-                content = String.format("A schedule entry '%s' was %s by %s.", saved.getTitle(),
-                        isUpdate ? "updated" : "added", author);
+                content = String.format("A %s has been scheduled by %s.", saved.getType(), author);
             }
 
             Announcement announcement = new Announcement(title, content, author);

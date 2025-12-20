@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface EventRepository extends MongoRepository<Event, String> {
     List<Event> findByIsPublicTrue();
+
+    void deleteByDateBefore(java.time.LocalDateTime date);
 }
