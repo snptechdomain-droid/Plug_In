@@ -41,16 +41,14 @@ public class ScheduleController {
         }
         ScheduleEntry saved = scheduleRepository.save(entry);
 
-        // 1. Integrate with Events: Create an Event if this is a NEW schedule entry
-        if (!isUpdate) {
+        // 1. Integrate with Events: Create an Event ONLY if type is "Event"
+        if (!isUpdate && "Event".equalsIgnoreCase(saved.getType())) {
             try {
-                // Determine privacy based on type maybe? Defaulting to public as requested.
-                // Assuming "from calendar" implies it should be visible.
                 Event event = new Event(
                         saved.getTitle(),
                         saved.getDescription() != null ? saved.getDescription() : "Scheduled via Calendar",
                         saved.getDate(),
-                        "TBD", // Venue
+                        saved.getVenue() != null ? saved.getVenue() : "TBD",
                         true, // isPublic
                         saved.getCreatedBy());
                 eventRepository.save(event);
