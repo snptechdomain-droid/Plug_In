@@ -84,7 +84,7 @@ flutter build apk --release
 ---
 
 ## 🤝 Contributing
-We welcome contributions from the community! Please read our `CONTRIBUTING.md` (if available) or simply fork the repo and open a Pull Request.
+We welcome contributions from the community!
 
 ---
 © 2025 Slug N Plug Club

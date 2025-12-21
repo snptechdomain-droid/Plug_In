@@ -236,12 +236,12 @@ class _GuestScreenState extends State<GuestScreen> {
                            Expanded(child: _buildGlassTextField(_mobileNumberController, 'Mobile', Icons.phone)),
                         ]),
                         const SizedBox(height: 16),
+                        _buildGlassTextField(_departmentController, 'Department', Icons.school),
+                        const SizedBox(height: 16),
                         Row(children: [
-                           Expanded(flex: 2, child: _buildGlassTextField(_departmentController, 'Dept', Icons.school)),
-                           const SizedBox(width: 8),
                            Expanded(child: _buildGlassTextField(_yearController, 'Year', Icons.calendar_today)),
-                           const SizedBox(width: 8),
-                           Expanded(child: _buildGlassTextField(_sectionController, 'Sec', Icons.class_)),
+                           const SizedBox(width: 12),
+                           Expanded(child: _buildGlassTextField(_sectionController, 'Section', Icons.class_)),
                         ]),
                         const SizedBox(height: 16),
                         _buildGlassTextField(_reasonController, 'Why join?', Icons.edit, maxLines: 3),
@@ -287,27 +287,33 @@ class _GuestScreenState extends State<GuestScreen> {
   }
 
   Widget _buildGlassTextField(TextEditingController controller, String label, IconData icon, {int maxLines = 1}) {
-      return TextField(
-        controller: controller,
-        maxLines: maxLines,
-        decoration: InputDecoration(
-          labelText: label,
-          prefixIcon: Icon(icon, size: 20, color: Theme.of(context).primaryColor),
-          filled: true,
-          fillColor: Colors.grey.withOpacity(0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
+      return Container(
+        constraints: BoxConstraints(minHeight: maxLines > 1 ? 100 : 60), // Enforce minimum height
+        child: TextField(
+          controller: controller,
+          maxLines: maxLines,
+          style: const TextStyle(fontSize: 16), // Larger text
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(fontSize: 15),
+            prefixIcon: Icon(icon, size: 24, color: Theme.of(context).primaryColor), // Larger icon
+            filled: true,
+            fillColor: Colors.grey.withOpacity(0.05),
+            isDense: false, // Ensure it's not too compact
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+               borderRadius: BorderRadius.circular(12),
+               borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+               borderRadius: BorderRadius.circular(12),
+               borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20), // Bigger padding
           ),
-          enabledBorder: OutlineInputBorder(
-             borderRadius: BorderRadius.circular(12),
-             borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-             borderRadius: BorderRadius.circular(12),
-             borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       );
   }

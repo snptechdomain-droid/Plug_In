@@ -678,24 +678,37 @@ class _DashboardCardState extends State<_DashboardCard> {
                       height: 60,
                       child: item.icon ?? const SizedBox(),
                     ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.title,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: textColor,
+                    Expanded( // Use Expanded to take remaining space
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end, // Push text to bottom
+                        children: [
+                          Flexible( // Allow title to shrink/wrap
+                            child: Text(
+                              item.title,
+                              style: theme.textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                                fontSize: 20, // Slightly smaller base size
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          item.subtitle,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: subtitleColor,
+                          const SizedBox(height: 4),
+                          Flexible( // Allow subtitle to shrink/wrap
+                            child: Text(
+                              item.subtitle,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: subtitleColor,
+                                fontSize: 13,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
