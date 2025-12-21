@@ -83,7 +83,7 @@ public class AuthController {
             user.setRole(User.Role.MEMBER);
         }
 
-        user.setAvatarUrl("https://api.dicebear.com/7.x/avataaars/svg?seed=" + request.getUsername());
+        user.setAvatarUrl("https://api.dicebear.com/7.x/avataaars/png?seed=" + request.getUsername());
         user.setCreatedAt(java.time.Instant.now());
 
         userRepository.save(user);
