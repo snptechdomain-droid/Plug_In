@@ -33,7 +33,6 @@ public class CleanupService {
         long retentionPeriodDays = 1;
 
         try {
-        try {
             // 1. Clean Announcements based on Expiry Date
             // Normal posts expire in 7 days, Schedule posts expire 1 day after event
             Instant now = Instant.now();
