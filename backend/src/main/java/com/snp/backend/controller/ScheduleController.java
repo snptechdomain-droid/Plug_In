@@ -71,6 +71,13 @@ public class ScheduleController {
             }
 
             Announcement announcement = new Announcement(title, content, author);
+
+            // Set expiry to 1 day after the schedule date
+            if (saved.getDate() != null) {
+                java.time.Instant scheduleInstant = saved.getDate().toInstant(java.time.ZoneOffset.UTC);
+                announcement.setExpiryDate(scheduleInstant.plus(1, java.time.temporal.ChronoUnit.DAYS));
+            }
+
             announcementRepository.save(announcement);
         } catch (Exception e) {
             System.err.println("Failed to create Announcement for Schedule: " + e.getMessage());

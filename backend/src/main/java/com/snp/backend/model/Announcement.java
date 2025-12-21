@@ -17,12 +17,15 @@ public class Announcement {
     private String content;
     private Instant date;
     private String authorName; // Display name of creator
+    private Instant expiryDate; // Auto-deletion date
 
     public Announcement(String title, String content, String authorName) {
         this.title = title;
         this.content = content;
         this.authorName = authorName;
         this.date = Instant.now();
+        // Default expiry 7 days if not set
+        this.expiryDate = this.date.plus(7, java.time.temporal.ChronoUnit.DAYS);
     }
 
     // Manual Getters and Setters to fix compilation if Lombok fails
@@ -64,5 +67,13 @@ public class Announcement {
 
     public void setAuthorName(String authorName) {
         this.authorName = authorName;
+    }
+
+    public Instant getExpiryDate() {
+        return expiryDate;
+    }
+
+    public void setExpiryDate(Instant expiryDate) {
+        this.expiryDate = expiryDate;
     }
 }

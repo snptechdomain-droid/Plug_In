@@ -773,10 +773,13 @@ class _MindmapScreenState extends State<MindmapScreen>
           if (node['iconCodePoint'] != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
-              child: Icon(
-                IconData(node['iconCodePoint'], fontFamily: 'MaterialIcons'),
-                color: color, // Icon matches border color
-                size: 20,
+              child: Text(
+                String.fromCharCode(node['iconCodePoint']),
+                style: TextStyle(
+                  fontFamily: 'MaterialIcons',
+                  color: color,
+                  fontSize: 20,
+                ),
               ),
             ),
           Flexible(

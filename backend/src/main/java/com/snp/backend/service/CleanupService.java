@@ -33,36 +33,17 @@ public class CleanupService {
         long retentionPeriodDays = 1;
 
         try {
-            // 1. Clean Announcements
-            Instant announceCutoff = Instant.now().minus(retentionPeriodDays, ChronoUnit.DAYS);
-            announcementRepository.deleteByDateBefore(announceCutoff);
-            System.out.println("Cleaned announcements older than: " + announceCutoff);
+        try {
+            // 1. Clean Announcements based on Expiry Date
+            // Normal posts expire in 7 days, Schedule posts expire 1 day after event
+            Instant now = Instant.now();
+            announcementRepository.deleteByExpiryDateBefore(now);
+            System.out.println("Cleaned expired announcements.");
 
             // 2. Clean Schedule/Calendar
             LocalDateTime scheduleCutoff = LocalDateTime.now().minusDays(retentionPeriodDays);
             scheduleRepository.deleteByDateBefore(scheduleCutoff);
             System.out.println("Cleaned schedule entries older than: " + scheduleCutoff);
-
-            // 3. Clean Events (optional, user asked for announcements and calendar, but
-            // keeping events clean is good too)
-            // User request: "only from announcements and calander"
-            // Wait, user said "only from announcements and calander".
-            // "and also" usually implies adding to the list.
-            // "delete announce ment and calander scheduled event and classes etc"
-            // "save storage only from announcements and calander"
-            // I will err on side of caution and clean events too if they are just "calendar
-            // events".
-            // But main "Event" entity might be archival?
-            // "calander scheduled event" -> implies ScheduleEntry which can be type
-            // 'Event'.
-            // The user phrase "only from announcements and calander" suggests preserving
-            // the main 'Event' records might be desired?
-            // BUT ScheduleController creates an 'Event' record too for calendar items.
-            // I will clean ScheduleEntry and Announcements as explicitly requested. I will
-            // NOT clean the main 'Event' collection unless it's strictly linked, to avoid
-            // deleting major archival events.
-            // Actually, "scheduled event and classes etc" refers to ScheduleEntry.
-            // I'll stick to Announcements and ScheduleEntry.
 
         } catch (Exception e) {
             System.err.println("Error during cleanup: " + e.getMessage());

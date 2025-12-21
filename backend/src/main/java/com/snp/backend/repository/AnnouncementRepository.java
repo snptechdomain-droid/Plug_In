@@ -8,4 +8,6 @@ public interface AnnouncementRepository extends MongoRepository<Announcement, St
     List<Announcement> findAllByOrderByDateDesc();
 
     void deleteByDateBefore(java.time.Instant date);
+
+    void deleteByExpiryDateBefore(java.time.Instant date);
 }
