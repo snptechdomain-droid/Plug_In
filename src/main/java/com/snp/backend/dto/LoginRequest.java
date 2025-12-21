@@ -2,7 +2,7 @@ package com.snp.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-
+//user config
 public class LoginRequest {
     @NotBlank(message = "Username is required")
     private String username; // Can be email or username
