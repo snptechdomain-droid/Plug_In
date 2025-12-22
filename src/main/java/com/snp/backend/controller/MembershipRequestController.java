@@ -45,8 +45,10 @@ public class MembershipRequestController {
                 if (userRepository.findByEmail(request.getEmail()).isEmpty()) {
                     com.snp.backend.model.User newUser = new com.snp.backend.model.User();
                     // newUser.setUsername(request.getEmail()); // Removed: Method undefined
+                    // Generate username-based email for consistent login
+                    String generatedUsername = request.getName().trim().replaceAll("\\s+", "").toLowerCase();
+                    newUser.setEmail(generatedUsername + "@snp.com");
                     newUser.setDisplayName(request.getName());
-                    newUser.setEmail(request.getEmail());
                     newUser.setRole(com.snp.backend.model.User.Role.MEMBER);
 
                     // Set default password to Register Number, or "welcome123" if missing
@@ -58,8 +60,9 @@ public class MembershipRequestController {
                     newUser.setActive(true);
                     newUser.setCreatedAt(java.time.Instant.now());
 
-                    // Optionally set bio with extra details
-                    String bio = String.format("%s | %s %s %s",
+                    // Store original email and other details in bio
+                    String bio = String.format("Email: %s | %s | %s %s %s",
+                            request.getEmail(),
                             request.getRegisterNumber() != null ? request.getRegisterNumber() : "-",
                             request.getDepartment() != null ? request.getDepartment() : "",
                             request.getYear() != null ? request.getYear() : "",
