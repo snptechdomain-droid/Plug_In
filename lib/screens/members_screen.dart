@@ -210,13 +210,14 @@ class _MembersScreenState extends State<MembersScreen> {
 
     for (var record in _attendanceRecords) {
       if (record['date'] != null) {
-        final recordDate = DateTime.parse(record['date']);
-        // Only count records AFTER the user joined (with a small buffer for same-day joiners)
-        if (recordDate.isAfter(joinDate.subtract(const Duration(days: 1)))) {
+        final recordDate = DateTime.parse(record['date']).toUtc();
+        final joinDateUtc = joinDate.toUtc();
+        // Only count records AFTER the user joined
+        if (recordDate.isAfter(joinDateUtc)) {
            totalApplicable++;
            final presentIds = List<String>.from(record['presentUserIds'] ?? []);
-           // Match by username or email
-           if (presentIds.contains(user.username) || presentIds.contains(user.email)) {
+           // Match by ID (primary), or username/email (legacy/fallback)
+           if (presentIds.contains(user.id) || presentIds.contains(user.username) || presentIds.contains(user.email)) {
              presentCount++;
            }
         }

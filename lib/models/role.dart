@@ -163,6 +163,7 @@ class RolePermissions {
 
 /// Model for user login details
 class UserLoginDetails {
+  final String id; // Added ID field
   final String username;
   final String email;
   final String passwordHash;
@@ -174,6 +175,7 @@ class UserLoginDetails {
   final String? avatarUrl;
 
   UserLoginDetails({
+    this.id = '', // Default empty
     required this.username,
     required this.email,
     required this.passwordHash,
@@ -187,6 +189,7 @@ class UserLoginDetails {
 
   factory UserLoginDetails.fromJson(Map<String, dynamic> json) {
     return UserLoginDetails(
+      id: json['id'] ?? '',
       username: json['username'] ?? '',
       email: json['email'] ?? '',
       passwordHash: json['passwordHash'] ?? '',
@@ -199,12 +202,13 @@ class UserLoginDetails {
           ? DateTime.parse(json['lastLogin'])
           : null,
       bio: json['bio'],
-      avatarUrl: json['avatarUrl'],
+      avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'username': username,
       'email': email,
       'passwordHash': passwordHash,
@@ -218,6 +222,7 @@ class UserLoginDetails {
   }
 
   UserLoginDetails copyWith({
+    String? id,
     String? username,
     String? email,
     String? passwordHash,
@@ -229,6 +234,7 @@ class UserLoginDetails {
     String? avatarUrl,
   }) {
     return UserLoginDetails(
+      id: id ?? this.id,
       username: username ?? this.username,
       email: email ?? this.email,
       passwordHash: passwordHash ?? this.passwordHash,

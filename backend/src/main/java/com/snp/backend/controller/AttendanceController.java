@@ -65,6 +65,7 @@ public class AttendanceController {
         // Try to resolve user by Email
         userRepository.findByEmail(query).ifPresent(user -> {
             searchIdentifiers.add(user.getEmail());
+            searchIdentifiers.add(user.getId()); // Match by ID
             if (user.getDisplayName() != null)
                 searchIdentifiers.add(user.getDisplayName());
         });
@@ -72,6 +73,7 @@ public class AttendanceController {
         // Try to resolve user by Display Name
         userRepository.findByDisplayName(query).ifPresent(user -> {
             searchIdentifiers.add(user.getEmail());
+            searchIdentifiers.add(user.getId()); // Match by ID
             if (user.getDisplayName() != null)
                 searchIdentifiers.add(user.getDisplayName());
         });

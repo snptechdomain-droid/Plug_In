@@ -182,6 +182,7 @@ class RoleBasedDatabaseService {
         final data = jsonDecode(response.body);
         
         final user = UserLoginDetails(
+          id: data['id'] ?? '',
           username: data['displayName'] ?? data['email'],
           email: data['email'],
           passwordHash: data['passwordHash'] ?? '',
@@ -244,7 +245,7 @@ class RoleBasedDatabaseService {
     // 1. Try fetching from Backend
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/users');
-      final response = await http.get(url).timeout(const Duration(seconds: 3));
+      final response = await http.get(url).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -428,15 +429,16 @@ class RoleBasedDatabaseService {
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => UserLoginDetails(
+          id: json['id'] ?? '',
           username: json['displayName'] ?? json['username'], 
           email: json['email'] ?? '',
           passwordHash: '', 
           role: UserRoleExtension.fromString(json['role'] ?? 'MEMBER'),
           isActive: true,
-          createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(), 
+          createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime(2000), 
           lastLogin: DateTime.now(), 
           bio: json['bio'],
-          avatarUrl: json['avatarUrl'],
+          avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),
         )).toList();
       } else {
         print('Failed to fetch users: ${response.body}');

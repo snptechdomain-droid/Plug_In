@@ -29,18 +29,23 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
     
     try {
       // 1. Fetch target user to get createdAt
-      final allUsers = await _roleDatabase.getAllUsers();
-      // Handle case where widget.username could be email or username
-      var user = allUsers.firstWhere(
-        (u) => u.email == widget.username || u.username == widget.username,
-        orElse: () => UserLoginDetails(
-          username: widget.username, 
-          email: '', 
-          passwordHash: '', 
-          role: UserRole.member,
-          createdAt: DateTime(2000), // Fallback to very old date if not found
-        ),
-      );
+      // 1. Fetch target user to get createdAt - Try specific fetch first
+      var user = await _roleDatabase.getUserByUsername(widget.username);
+      
+      if (user == null) {
+         // Fallback: try searching in all users list as backup
+         final allUsers = await _roleDatabase.getAllUsers();
+         user = allUsers.firstWhere(
+            (u) => u.email == widget.username || u.username == widget.username,
+            orElse: () => UserLoginDetails(
+              username: widget.username, 
+              email: '', 
+              passwordHash: '', 
+              role: UserRole.member,
+              createdAt: DateTime(2000), // Fallback to 2000 to show ALL history if date unknown
+            ),
+         );
+      }
       
       final joinDate = user.createdAt;
 
@@ -50,9 +55,10 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
       // 3. Filter history based on joinDate
       final filteredHistory = history.where((record) {
         if (record['date'] == null) return false;
-        final recordDate = DateTime.parse(record['date']);
-        // Include events after joining (with 1 day buffer)
-        return recordDate.isAfter(joinDate.subtract(const Duration(days: 1)));
+        final recordDate = DateTime.parse(record['date']).toUtc();
+        final joinDateUtc = joinDate.toUtc();
+        // Include events strictly after joining (comparing exact times)
+        return recordDate.isAfter(joinDateUtc);
       }).toList();
 
       if (mounted) {
