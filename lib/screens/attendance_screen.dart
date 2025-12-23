@@ -332,17 +332,26 @@ class _MarkAttendanceDialogState extends State<_MarkAttendanceDialog> {
                 itemCount: widget.users.length,
                 itemBuilder: (context, index) {
                   final user = widget.users[index];
-                  final isSelected = _selectedUsernames.contains(user.email);
+                  final isSelected = _selectedUsernames.contains(user.id) || 
+                                     _selectedUsernames.contains(user.email) || 
+                                     _selectedUsernames.contains(user.username);
+                  
                   return CheckboxListTile(
                     title: Text(user.username),
                     subtitle: Text(user.role.displayName),
                     value: isSelected,
                     onChanged: (bool? value) {
                       setState(() {
+                         // Prefer saving ID, fallback to email -> username
+                         final idToSave = user.id.isNotEmpty ? user.id : (user.email.isNotEmpty ? user.email : user.username);
+                         
                         if (value == true) {
-                          _selectedUsernames.add(user.email);
+                          _selectedUsernames.add(idToSave);
                         } else {
+                          // Remove any matching identifier to be safe
+                          _selectedUsernames.remove(user.id);
                           _selectedUsernames.remove(user.email);
+                          _selectedUsernames.remove(user.username);
                         }
                       });
                     },

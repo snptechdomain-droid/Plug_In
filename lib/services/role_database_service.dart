@@ -82,6 +82,14 @@ class RoleBasedDatabaseService {
     return sha256.convert(utf8.encode(password)).toString();
   }
 
+  /// Helper to parse dates safely (handles String ISO and Int Epoch)
+  static DateTime parseDate(dynamic input) {
+    if (input == null) return DateTime(2000); // Default fallback
+    if (input is String) return DateTime.parse(input);
+    if (input is int) return DateTime.fromMillisecondsSinceEpoch(input);
+    return DateTime(2000);
+  }
+
   /// Add a new user
   Future<bool> addUser(UserLoginDetails user) async {
     try {
@@ -188,7 +196,7 @@ class RoleBasedDatabaseService {
           passwordHash: data['passwordHash'] ?? '',
           role: UserRoleExtension.fromString(data['role'] ?? 'GUEST'),
           isActive: true, 
-          createdAt: data['createdAt'] != null ? DateTime.parse(data['createdAt']) : DateTime.now(),
+          createdAt: parseDate(data['createdAt']),
           lastLogin: DateTime.now(),
           bio: data['bio'],
           avatarUrl: data['avatarUrl'],
@@ -435,7 +443,7 @@ class RoleBasedDatabaseService {
           passwordHash: '', 
           role: UserRoleExtension.fromString(json['role'] ?? 'MEMBER'),
           isActive: true,
-          createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime(2000), 
+          createdAt: parseDate(json['createdAt']), 
           lastLogin: DateTime.now(), 
           bio: json['bio'],
           avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),

@@ -195,9 +195,11 @@ class UserLoginDetails {
       passwordHash: json['passwordHash'] ?? '',
       role: UserRoleExtension.fromString(json['role'] ?? 'guest'),
       isActive: json['isActive'] ?? true,
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
-          : DateTime.now(),
+      createdAt: json['createdAt'] == null 
+          ? DateTime.now() 
+          : (json['createdAt'] is int 
+              ? DateTime.fromMillisecondsSinceEpoch(json['createdAt']) 
+              : DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()),
       lastLogin: json['lastLogin'] != null
           ? DateTime.parse(json['lastLogin'])
           : null,

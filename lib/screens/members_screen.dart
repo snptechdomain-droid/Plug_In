@@ -210,7 +210,7 @@ class _MembersScreenState extends State<MembersScreen> {
 
     for (var record in _attendanceRecords) {
       if (record['date'] != null) {
-        final recordDate = DateTime.parse(record['date']).toUtc();
+        final recordDate = RoleBasedDatabaseService.parseDate(record['date']).toUtc();
         final joinDateUtc = joinDate.toUtc();
         // Only count records AFTER the user joined
         if (recordDate.isAfter(joinDateUtc)) {

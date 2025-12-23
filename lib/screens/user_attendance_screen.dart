@@ -55,10 +55,10 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
       // 3. Filter history based on joinDate
       final filteredHistory = history.where((record) {
         if (record['date'] == null) return false;
-        final recordDate = DateTime.parse(record['date']).toUtc();
+        final recordDate = RoleBasedDatabaseService.parseDate(record['date']).toUtc();
         final joinDateUtc = joinDate.toUtc();
-        // Include events strictly after joining (comparing exact times)
-        return recordDate.isAfter(joinDateUtc);
+        // Include events strictly after joining OR if they were marked present
+        return recordDate.isAfter(joinDateUtc) || record['status'] == 'PRESENT';
       }).toList();
 
       if (mounted) {
@@ -173,7 +173,7 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                       itemBuilder: (context, index) {
                         final record = _attendanceHistory[index];
                         final isPresent = record['status'] == 'PRESENT';
-                        final date = DateTime.parse(record['date']);
+                        final date = RoleBasedDatabaseService.parseDate(record['date']);
                         final notes = record['notes'];
 
                         return Padding(
