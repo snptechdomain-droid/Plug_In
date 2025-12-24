@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/models/role.dart';
+import 'package:app/models/domain.dart';
 import 'dart:convert';
 import 'package:app/widgets/glass_container.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:app/screens/member_profile_screen.dart';
 import 'package:app/screens/user_attendance_screen.dart';
-
-import 'package:app/widgets/app_drawer.dart';
 
 class MembersScreen extends StatefulWidget {
   const MembersScreen({super.key});
@@ -60,28 +61,39 @@ class _MembersScreenState extends State<MembersScreen> {
     }
   }
 
-
+  double _calculateAttendance(String username) {
+    if (_attendanceRecords.isEmpty) return 0.0;
+    
+    int presentCount = 0;
+    for (var record in _attendanceRecords) {
+      final presentIds = List<String>.from(record['presentUserIds'] ?? []);
+      // Assuming username is used as ID for now, or we need to match by ID if available
+      // Since UserLoginDetails doesn't have ID, we use username. 
+      // Ideally backend should return ID and we use that.
+      if (presentIds.contains(username)) {
+        presentCount++;
+      }
+    }
+    
+    return (presentCount / _attendanceRecords.length) * 100.0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Scaffold(
-      drawer: const AppDrawer(currentRoute: '/members'),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Members',
-          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, color: isDark ? Colors.yellow : Colors.blue), // Yellow/Blue refresh
-            onPressed: () => _loadData(), // Fixed lambda reference
+            icon: const Icon(Icons.refresh, color: Colors.yellow),
+            onPressed: _loadData,
           ),
         ],
         flexibleSpace: GlassContainer(
@@ -92,19 +104,17 @@ class _MembersScreenState extends State<MembersScreen> {
         ),
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: isDark
-                ? [Colors.black, const Color(0xFF1E1E1E)]
-                : [const Color(0xFFF5F7FA), Colors.white],
+            colors: [Colors.black, Color(0xFF1E1E1E)],
           ),
         ),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.yellow))
             : _members.isEmpty
-                ? Center(child: Text('No members found', style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600])))
+                ? const Center(child: Text('No members found', style: TextStyle(color: Colors.grey)))
                 : Column(
                     children: [
                       Padding(
@@ -117,7 +127,6 @@ class _MembersScreenState extends State<MembersScreen> {
                                 value: _members.length.toString(),
                                 icon: Icons.group,
                                 color: Colors.blueAccent,
-                                isDark: isDark,
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -127,7 +136,6 @@ class _MembersScreenState extends State<MembersScreen> {
                                 value: '${_calculateAverageAttendance().toStringAsFixed(1)}%',
                                 icon: Icons.bar_chart,
                                 color: Colors.greenAccent,
-                                isDark: isDark,
                               ),
                             ),
                           ],
@@ -140,7 +148,7 @@ class _MembersScreenState extends State<MembersScreen> {
                             itemCount: _members.length,
                             itemBuilder: (context, index) {
                               final member = _members[index];
-                              final attendancePercentage = _calculateAttendance(member);
+                              final attendancePercentage = _calculateAttendance(member.email);
 
                               return AnimationConfiguration.staggeredList(
                                 position: index,
@@ -150,10 +158,10 @@ class _MembersScreenState extends State<MembersScreen> {
                                   child: FadeInAnimation(
                                     child: MemberCard(
                                       name: member.username,
-                                      role: member.role.displayName,
+                                      role: member.role,
+                                      domain: member.domain,
                                       attendance: attendancePercentage,
                                       avatarUrl: member.avatarUrl,
-                                      isDark: isDark,
                                       onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
                                           ? () => _showRoleDialog(member)
                                           : null,
@@ -164,7 +172,10 @@ class _MembersScreenState extends State<MembersScreen> {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => UserAttendanceScreen(username: member.email),
+                                            builder: (context) => MemberProfileScreen(
+                                              member: member,
+                                              attendance: attendancePercentage,
+                                            ),
                                           ),
                                         );
                                       },
@@ -182,12 +193,6 @@ class _MembersScreenState extends State<MembersScreen> {
     );
   }
 
-  // ... (keeping other methods same, skipping large blocks of code if possible but need class structure)
-  // Since I'm replacing build, I need to match everything or close bracket correctly.
-  // Wait, I am replacing from 'build' onwards. I need to keep valid structure.
-  
-  // Actually, I'll update the _StatCard and MemberCard classes first as they are clean targets.
-  // Then update build.
   bool _canDelete(UserLoginDetails targetUser) {
     if (_currentUser == null) return false;
     if (targetUser.username == 'admin') return false; // Protect root admin
@@ -202,53 +207,24 @@ class _MembersScreenState extends State<MembersScreen> {
     return false;
   }
 
-  double _calculateAttendance(UserLoginDetails user) {
-    final joinDate = user.createdAt;
-
-    int totalApplicable = 0;
-    int presentCount = 0;
-
-    for (var record in _attendanceRecords) {
-      if (record['date'] != null) {
-        final recordDate = RoleBasedDatabaseService.parseDate(record['date']).toUtc();
-        final joinDateUtc = joinDate.toUtc();
-        // Only count records AFTER the user joined
-        if (recordDate.isAfter(joinDateUtc)) {
-           totalApplicable++;
-           final presentIds = List<String>.from(record['presentUserIds'] ?? []);
-           // Match by ID (primary), or username/email (legacy/fallback)
-           if (presentIds.contains(user.id) || presentIds.contains(user.username) || presentIds.contains(user.email)) {
-             presentCount++;
-           }
-        }
-      }
-    }
-
-    if (totalApplicable == 0) return 0.0;
-    return (presentCount / totalApplicable) * 100.0;
-  }
-
   double _calculateAverageAttendance() {
     if (_members.isEmpty) return 0.0;
     double total = 0;
     for (var member in _members) {
-      total += _calculateAttendance(member);
+      total += _calculateAttendance(member.username);
     }
     return total / _members.length;
   }
 
   Future<void> _confirmDelete(UserLoginDetails user) async {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text('Confirm Deletion', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Confirm Deletion', style: TextStyle(color: Colors.white)),
         content: Text(
           'Are you sure you want to remove ${user.username}?\nThis action cannot be undone.', 
-          style: TextStyle(color: isDark ? Colors.grey : Colors.grey[800]),
+          style: const TextStyle(color: Colors.grey),
         ),
         actions: [
           TextButton(
@@ -283,29 +259,36 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   void _showRoleDialog(UserLoginDetails user) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text('Edit Role for ${user.username}', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text('Edit Role for ${user.username}', style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: UserRole.values.where((r) => r != UserRole.guest).map((role) {
             return ListTile(
-              title: Text(role.displayName, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+              title: Text(role.displayName, style: const TextStyle(color: Colors.white)),
               leading: Radio<UserRole>(
                 value: role,
                 groupValue: user.role,
-                activeColor: isDark ? Colors.yellow : Colors.blue,
+                activeColor: Colors.yellow,
                 fillColor: MaterialStateProperty.resolveWith((states) => 
-                  states.contains(MaterialState.selected) ? (isDark ? Colors.yellow : Colors.blue) : Colors.grey),
+                  states.contains(MaterialState.selected) ? Colors.yellow : Colors.grey),
                 onChanged: (UserRole? value) async {
                   if (value != null) {
                     Navigator.pop(dialogContext); // Close dialog using dialogContext
-                    final success = await _roleDatabase.changeUserRole(user.email, value.value.toUpperCase());
+                    Domain? selectedDomain;
+                    if (value == UserRole.moderator) {
+                      selectedDomain = await _promptDomainSelection();
+                      if (selectedDomain == null) return;
+                    }
+
+                    final success = await _roleDatabase.changeUserRole(
+                      user.email,
+                      value.value.toUpperCase(),
+                      domain: selectedDomain,
+                    );
                     
                     if (!mounted) return; // Check if MembersScreen is mounted
 
@@ -328,6 +311,42 @@ class _MembersScreenState extends State<MembersScreen> {
       ),
     );
   }
+
+  Future<Domain?> _promptDomainSelection() async {
+    Domain? selected = Domain.tech;
+    return showDialog<Domain>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Select Domain', style: TextStyle(color: Colors.white)),
+        content: StatefulBuilder(
+          builder: (context, setState) => DropdownButtonFormField<Domain>(
+            value: selected,
+            dropdownColor: const Color(0xFF1E1E1E),
+            iconEnabledColor: Colors.yellow,
+            items: Domain.values
+                .map((d) => DropdownMenuItem(
+                      value: d,
+                      child: Text(d.label, style: const TextStyle(color: Colors.white)),
+                    ))
+                .toList(),
+            onChanged: (val) => setState(() => selected = val),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, selected),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow, foregroundColor: Colors.black),
+            child: const Text('Assign'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StatCard extends StatelessWidget {
@@ -335,14 +354,12 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
-  final bool isDark; // Added
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
-    required this.isDark, // Added
   });
 
   @override
@@ -350,15 +367,15 @@ class _StatCard extends StatelessWidget {
     return GlassContainer(
       padding: const EdgeInsets.all(16.0),
       borderRadius: BorderRadius.circular(16),
-      color: isDark ? Colors.white : Colors.black, // Invert base color
+      color: Colors.white,
       opacity: 0.05,
-      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+      border: Border.all(color: Colors.white.withOpacity(0.1)),
       child: Column(
         children: [
           Icon(icon, size: 32, color: color),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
-          Text(title, style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
+          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
         ],
       ),
     );
@@ -367,24 +384,24 @@ class _StatCard extends StatelessWidget {
 
 class MemberCard extends StatelessWidget {
   final String name;
-  final String role;
+  final UserRole role;
   final double attendance;
   final String? avatarUrl;
+  final Domain? domain;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
-  final bool isDark; // Added
 
   const MemberCard({
     super.key,
     required this.name,
     required this.role,
     required this.attendance,
+    required this.domain,
     this.avatarUrl,
     this.onEdit,
     this.onDelete,
     this.onTap,
-    required this.isDark, // Added
   });
 
   Color _getAttendanceColor(double percentage) {
@@ -397,47 +414,119 @@ class MemberCard extends StatelessWidget {
     }
   }
 
+  bool _isSvgData(String data) {
+    final lower = data.toLowerCase();
+    return lower.contains('svg+xml') ||
+        lower.trim().startsWith('<svg') ||
+        lower.startsWith('phn2zy'); // base64 for "<svg"
+  }
+
+  ImageProvider? _buildAvatarImage() {
+    if (avatarUrl == null || avatarUrl!.isEmpty) return null;
+    if (_isSvgData(avatarUrl!)) return null;
+
+    if (avatarUrl!.startsWith('http')) {
+      return NetworkImage(avatarUrl!);
+    }
+
+    try {
+      final bytes = base64Decode(
+          avatarUrl!.contains(',') ? avatarUrl!.split(',').last : avatarUrl!);
+      return MemoryImage(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildAvatarChild() {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty && _isSvgData(avatarUrl!)) {
+      try {
+        final svgString = avatarUrl!.contains(',')
+            ? utf8.decode(base64Decode(avatarUrl!.split(',').last))
+            : avatarUrl!;
+        return SvgPicture.string(
+          svgString,
+          width: 28,
+          height: 28,
+          colorFilter: const ColorFilter.mode(Colors.yellow, BlendMode.srcIn),
+        );
+      } catch (_) {
+        // Fall through to domain badge
+      }
+    }
+    final text = domain?.shortLabel ?? name.substring(0, 1).toUpperCase();
+    final color = domain?.badgeColor ?? Colors.yellow;
+    return Text(
+      text,
+      style: TextStyle(
+        color: color,
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+      ),
+    );
+  }
+
+  String _roleLabel() {
+    if (role == UserRole.moderator) {
+      return 'Lead (${domain?.label ?? 'Domain'})';
+    }
+    return role.displayName;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
       borderRadius: BorderRadius.circular(16),
-      color: isDark ? Colors.white : Colors.black, // Invert base
+      color: Colors.white,
       opacity: 0.05,
-      border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+      border: Border.all(color: Colors.white.withOpacity(0.05)),
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
           radius: 24,
-          backgroundColor: isDark ? Colors.yellow.withOpacity(0.2) : Colors.blue.withOpacity(0.1),
-          backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
-              ? (avatarUrl!.startsWith('http') 
-                  ? NetworkImage(avatarUrl!) 
-                  : MemoryImage(base64Decode(avatarUrl!.contains(',') ? avatarUrl!.split(',').last : avatarUrl!)) as ImageProvider)
-              : null,
-          child: (avatarUrl == null || avatarUrl!.isEmpty)
-              ? Icon(
-                  Icons.person_outline,
-                  size: 28,
-                  color: isDark ? Colors.yellow : Colors.blue,
-                )
-              : null,
+          backgroundColor: (domain?.badgeColor ?? Colors.yellow).withOpacity(0.18),
+          backgroundImage: _buildAvatarImage(),
+          child: _buildAvatarChild(),
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        title: Text(
-          name,
-          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+            if (domain != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: domain!.badgeColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: domain!.badgeColor.withOpacity(0.4)),
+                ),
+                child: Text(
+                  domain!.shortLabel,
+                  style: TextStyle(
+                    color: domain!.badgeColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
         ),
         subtitle: Text(
-          role,
-          style: TextStyle(fontSize: 15, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+          _roleLabel(),
+          style: TextStyle(fontSize: 15, color: Colors.grey.shade400),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (onEdit != null)
               IconButton(
-                icon: Icon(Icons.edit_note, color: isDark ? Colors.yellow : Colors.blue),
+                icon: const Icon(Icons.edit_note, color: Colors.yellow),
                 onPressed: onEdit,
               ),
             if (onDelete != null)
@@ -450,7 +539,7 @@ class MemberCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: _getAttendanceColor(attendance), // Keep colorful status
+                color: _getAttendanceColor(attendance),
               ),
             ),
           ],

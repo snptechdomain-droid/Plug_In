@@ -14,6 +14,7 @@ public class Event {
     private String venue;
     private boolean isPublic;
     private String createdBy;
+    private String eventCoordinator;
     private boolean registrationStarted;
     private String imageUrl;
     private java.util.List<EventRegistration> registrations = new java.util.ArrayList<>();
@@ -30,6 +31,7 @@ public class Event {
         this.venue = venue;
         this.isPublic = isPublic;
         this.createdBy = createdBy;
+        this.eventCoordinator = null;
         this.registrations = new java.util.ArrayList<>();
     }
 
@@ -88,6 +90,14 @@ public class Event {
 
     public void setCreatedBy(String createdBy) {
         this.createdBy = createdBy;
+    }
+
+    public String getEventCoordinator() {
+        return eventCoordinator;
+    }
+
+    public void setEventCoordinator(String eventCoordinator) {
+        this.eventCoordinator = eventCoordinator;
     }
 
     public boolean isRegistrationStarted() {

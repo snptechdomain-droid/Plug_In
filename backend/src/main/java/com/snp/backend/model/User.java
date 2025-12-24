@@ -1,8 +1,5 @@
 package com.snp.backend.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -25,6 +22,11 @@ public class User {
     private boolean active = true;
 
     private Role role;
+    private Domain domain;
+    private String registerNumber;
+    private String year;
+    private String section;
+    private String department;
 
     @CreatedDate
     private Instant createdAt;
@@ -33,16 +35,25 @@ public class User {
 
     public enum Role {
         ADMIN,
-        MODERATOR,
+        LEAD,
         EVENT_COORDINATOR,
         MEMBER
+    }
+
+    public enum Domain {
+        MANAGEMENT,
+        TECH,
+        WEB_DEV,
+        CONTENT,
+        DESIGN,
+        MARKETING
     }
 
     public User() {
     }
 
     public User(String id, String email, String passwordHash, String displayName, String avatarUrl, Role role,
-            Instant createdAt) {
+            Instant createdAt, Domain domain, String registerNumber, String year, String section, String department) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -50,6 +61,11 @@ public class User {
         this.avatarUrl = avatarUrl;
         this.role = role;
         this.createdAt = createdAt;
+        this.domain = domain;
+        this.registerNumber = registerNumber;
+        this.year = year;
+        this.section = section;
+        this.department = department;
     }
 
     public String getId() {
@@ -114,6 +130,46 @@ public class User {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public Domain getDomain() {
+        return domain;
+    }
+
+    public void setDomain(Domain domain) {
+        this.domain = domain;
+    }
+
+    public String getRegisterNumber() {
+        return registerNumber;
+    }
+
+    public void setRegisterNumber(String registerNumber) {
+        this.registerNumber = registerNumber;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getSection() {
+        return section;
+    }
+
+    public void setSection(String section) {
+        this.section = section;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
     }
 
     public Instant getCreatedAt() {

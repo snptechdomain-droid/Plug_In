@@ -1,7 +1,9 @@
 package com.snp.backend.controller;
 
 import com.snp.backend.model.Event;
+import com.snp.backend.model.User;
 import com.snp.backend.repository.EventRepository;
+import com.snp.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
@@ -17,6 +19,9 @@ public class EventController {
 
     @Autowired
     private com.snp.backend.repository.AnnouncementRepository announcementRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @GetMapping
     public List<Event> getAllEvents() {
@@ -35,6 +40,8 @@ public class EventController {
             event.setDate(LocalDateTime.now());
         }
         Event savedEvent = eventRepository.save(event);
+
+        assignCoordinatorRole(savedEvent.getEventCoordinator());
 
         // Automatically create an announcement
         try {
@@ -62,6 +69,8 @@ public class EventController {
             event.setPublic(eventDetails.isPublic());
             event.setRegistrationStarted(eventDetails.isRegistrationStarted());
             event.setImageUrl(eventDetails.getImageUrl());
+            event.setEventCoordinator(eventDetails.getEventCoordinator());
+            assignCoordinatorRole(eventDetails.getEventCoordinator());
             return eventRepository.save(event);
         }).orElseThrow(() -> new RuntimeException("Event not found"));
     }
@@ -81,5 +90,15 @@ public class EventController {
             event.addRegistration(registration);
             return eventRepository.save(event);
         }).orElseThrow(() -> new RuntimeException("Event not found"));
+    }
+
+    private void assignCoordinatorRole(String coordinatorEmail) {
+        if (coordinatorEmail == null || coordinatorEmail.isEmpty()) {
+            return;
+        }
+        userRepository.findByEmail(coordinatorEmail).ifPresent(user -> {
+            user.setRole(User.Role.EVENT_COORDINATOR);
+            userRepository.save(user);
+        });
     }
 }

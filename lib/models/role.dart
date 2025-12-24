@@ -1,3 +1,5 @@
+import 'domain.dart';
+
 /// Enum for available roles in the system
 enum UserRole {
   admin,
@@ -163,7 +165,6 @@ class RolePermissions {
 
 /// Model for user login details
 class UserLoginDetails {
-  final String id; // Added ID field
   final String username;
   final String email;
   final String passwordHash;
@@ -173,9 +174,13 @@ class UserLoginDetails {
   final DateTime? lastLogin;
   final String? bio;
   final String? avatarUrl;
+  final Domain? domain;
+  final String? registerNumber;
+  final String? year;
+  final String? section;
+  final String? department;
 
   UserLoginDetails({
-    this.id = '', // Default empty
     required this.username,
     required this.email,
     required this.passwordHash,
@@ -185,32 +190,38 @@ class UserLoginDetails {
     this.lastLogin,
     this.bio,
     this.avatarUrl,
+    this.domain,
+    this.registerNumber,
+    this.year,
+    this.section,
+    this.department,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory UserLoginDetails.fromJson(Map<String, dynamic> json) {
     return UserLoginDetails(
-      id: json['id'] ?? '',
-      username: json['username'] ?? '',
+      username: json['displayName'] ?? json['username'] ?? '',
       email: json['email'] ?? '',
       passwordHash: json['passwordHash'] ?? '',
       role: UserRoleExtension.fromString(json['role'] ?? 'guest'),
       isActive: json['isActive'] ?? true,
-      createdAt: json['createdAt'] == null 
-          ? DateTime.now() 
-          : (json['createdAt'] is int 
-              ? DateTime.fromMillisecondsSinceEpoch(json['createdAt']) 
-              : DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
       lastLogin: json['lastLogin'] != null
           ? DateTime.parse(json['lastLogin'])
           : null,
       bio: json['bio'],
-      avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),
+      avatarUrl: json['avatarUrl'],
+      domain: DomainExtension.fromString(json['domain'] ?? json['assignedDomain']),
+      registerNumber: json['registerNumber'],
+      year: json['year'],
+      section: json['section'],
+      department: json['department'],
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'username': username,
       'email': email,
       'passwordHash': passwordHash,
@@ -220,11 +231,15 @@ class UserLoginDetails {
       'lastLogin': lastLogin?.toIso8601String(),
       'bio': bio,
       'avatarUrl': avatarUrl,
+      'domain': domain?.apiValue,
+      'registerNumber': registerNumber,
+      'year': year,
+      'section': section,
+      'department': department,
     };
   }
 
   UserLoginDetails copyWith({
-    String? id,
     String? username,
     String? email,
     String? passwordHash,
@@ -234,9 +249,13 @@ class UserLoginDetails {
     DateTime? lastLogin,
     String? bio,
     String? avatarUrl,
+    Domain? domain,
+    String? registerNumber,
+    String? year,
+    String? section,
+    String? department,
   }) {
     return UserLoginDetails(
-      id: id ?? this.id,
       username: username ?? this.username,
       email: email ?? this.email,
       passwordHash: passwordHash ?? this.passwordHash,
@@ -246,6 +265,11 @@ class UserLoginDetails {
       lastLogin: lastLogin ?? this.lastLogin,
       bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      domain: domain ?? this.domain,
+      registerNumber: registerNumber ?? this.registerNumber,
+      year: year ?? this.year,
+      section: section ?? this.section,
+      department: department ?? this.department,
     );
   }
 }

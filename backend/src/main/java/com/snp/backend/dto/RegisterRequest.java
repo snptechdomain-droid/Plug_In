@@ -13,14 +13,25 @@ public class RegisterRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
     private String key;
+    private String registerNumber;
+    private String year;
+    private String section;
+    private String department;
+    private String domain;
 
     public RegisterRequest() {
     }
 
-    public RegisterRequest(String username, String password, String key) {
+    public RegisterRequest(String username, String password, String key, String registerNumber, String year,
+            String section, String department, String domain) {
         this.username = username;
         this.password = password;
         this.key = key;
+        this.registerNumber = registerNumber;
+        this.year = year;
+        this.section = section;
+        this.department = department;
+        this.domain = domain;
     }
 
     public String getUsername() {
@@ -45,5 +56,45 @@ public class RegisterRequest {
 
     public void setKey(String key) {
         this.key = key;
+    }
+
+    public String getRegisterNumber() {
+        return registerNumber;
+    }
+
+    public void setRegisterNumber(String registerNumber) {
+        this.registerNumber = registerNumber;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getSection() {
+        return section;
+    }
+
+    public void setSection(String section) {
+        this.section = section;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 }

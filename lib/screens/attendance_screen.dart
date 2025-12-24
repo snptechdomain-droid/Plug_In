@@ -332,7 +332,7 @@ class _MarkAttendanceDialogState extends State<_MarkAttendanceDialog> {
                 itemCount: widget.users.length,
                 itemBuilder: (context, index) {
                   final user = widget.users[index];
-                  final isSelected = _selectedUsernames.contains(user.id) || 
+                  final isSelected = _selectedUsernames.contains(user.bio) ||
                                      _selectedUsernames.contains(user.email) || 
                                      _selectedUsernames.contains(user.username);
                   
@@ -340,21 +340,21 @@ class _MarkAttendanceDialogState extends State<_MarkAttendanceDialog> {
                     title: Text(user.username),
                     subtitle: Text(user.role.displayName),
                     value: isSelected,
-                    onChanged: (bool? value) {
-                      setState(() {
-                         // Prefer saving ID, fallback to email -> username
-                         final idToSave = user.id.isNotEmpty ? user.id : (user.email.isNotEmpty ? user.email : user.username);
-                         
-                        if (value == true) {
-                          _selectedUsernames.add(idToSave);
-                        } else {
-                          // Remove any matching identifier to be safe
-                          _selectedUsernames.remove(user.id);
-                          _selectedUsernames.remove(user.email);
-                          _selectedUsernames.remove(user.username);
-                        }
-                      });
-                    },
+                      // Change lines 253-259 in attendance_screen.dart to this:
+                      onChanged: (bool? value) {
+                        setState(() {
+                          // Teammate likely removed .id. Use .email as the primary identifier
+                          final idToSave = user.email.isNotEmpty ? user.email : user.username;
+
+                          if (value == true) {
+                            _selectedUsernames.add(idToSave);
+                          } else {
+                            _selectedUsernames.remove(user.email);
+                            _selectedUsernames.remove(user.username);
+                          }
+                        });
+                      }
+
                   );
                 },
               ),
