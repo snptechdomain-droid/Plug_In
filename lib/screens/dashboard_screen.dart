@@ -150,7 +150,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                content: Text('You have $count unread announcements!'),
                action: SnackBarAction(
                  label: 'VIEW',
-                 onPressed: () {
+                 onPressed: () async {
+                    if (mounted) {
+                      setState(() {
+                        _unreadAnnouncements = 0;
+                      });
+                    }
+                    if (user != null) {
+                      await roleDatabase.markAnnouncementsRead(user.email);
+                    }
                     Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnnouncementsScreen()));
                  },
                ),
@@ -230,15 +238,6 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   final List<_DashboardItem> dashboardItems = [
     _DashboardItem(
-      title: 'Attendance',
-      lottieAsset: 'assets/lottie/attendance.json',
-      icon: Icon(Icons.co_present, size: 40, color: Colors.white),
-      drawerIcon: Icon(Icons.co_present, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
-      subtitle: 'View & mark attendance logs',
-      destination: const AttendanceScreen(),
-      color: const Color(0xFF0077B6), // Strong Blue
-    ),
-    _DashboardItem(
       title: 'Events',
       lottieAsset: 'assets/lottie/events.json',
       icon: Icon(Icons.event, size: 40, color: Colors.white),
@@ -255,6 +254,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       subtitle: 'Access mindmaps and timelines',
       destination: const CollaborationScreen(),
       color: const Color(0xFF6A4C93), // Royal Purple
+    ),
+    _DashboardItem(
+      title: 'Attendance',
+      lottieAsset: 'assets/lottie/attendance.json',
+      icon: Icon(Icons.co_present, size: 40, color: Colors.white),
+      drawerIcon: Icon(Icons.co_present, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'View & mark attendance logs',
+      destination: const AttendanceScreen(),
+      color: const Color(0xFF0077B6), // Strong Blue
     ),
     _DashboardItem(
       title: 'Announcements',
@@ -321,6 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           padding: EdgeInsets.zero,
           children: <Widget>[
             _buildDrawerHeader(context, theme, primaryColor, appBarTextColor, isDarkMode),
+            const Divider(),
             ListTile(
               leading: Icon(Icons.home, color: isDarkMode ? Colors.white : Colors.black87),
               title: const Text('Home'),
@@ -334,20 +343,20 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 }
               },
             ),
-            const Divider(),
-            ...dashboardItems.map((item) {
-              return ListTile(
-                leading: SizedBox(width: 30, height: 30, child: item.drawerIcon),
-                title: Text(item.title),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
-                  if (item.title == 'Announcements') {
-                    _loadUnreadAnnouncements();
-                  }
-                },
-              );
-            }).toList(),
+            ...dashboardItems.expand((item) => [
+                  ListTile(
+                    leading: SizedBox(width: 30, height: 30, child: item.drawerIcon),
+                    title: Text(item.title),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
+                      if (item.title == 'Announcements') {
+                        _loadUnreadAnnouncements();
+                      }
+                    },
+                  ),
+                  if (item.title == 'Join Requests') const Divider(),
+                ]),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Logout'),

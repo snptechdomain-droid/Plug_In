@@ -6,6 +6,7 @@ import 'package:app/screens/register_screen.dart';
 import 'package:app/screens/dashboard_screen.dart';
 import 'package:app/screens/splash_screen.dart';
 import 'package:app/services/theme_service.dart';
+import 'package:app/screens/forgot_password_screen.dart';
 import 'package:app/screens/role_management_screen.dart';
 import 'package:app/screens/permissions_screen.dart';
 import 'package:app/services/auth_service.dart';
@@ -87,6 +88,9 @@ class SlugNPlugApp extends StatelessWidget {
         break;
       case '/dashboard':
         page = const AuthGuard(child: DashboardScreen());
+        break;
+      case '/forgot-password':
+        page = const ForgotPasswordScreen();
         break;
       case '/roles':
         page = const AuthGuard(child: RoleManagementScreen());

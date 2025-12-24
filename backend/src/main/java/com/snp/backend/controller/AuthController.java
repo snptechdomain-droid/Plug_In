@@ -76,6 +76,18 @@ public class AuthController {
         user.setEmail(request.getUsername() + "@snp.com");
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setDisplayName(request.getUsername());
+        user.setRegisterNumber(request.getRegisterNumber());
+        user.setYear(request.getYear());
+        user.setSection(request.getSection());
+        user.setDepartment(request.getDepartment());
+        if (request.getDomain() != null) {
+            try {
+                user.setDomain(User.Domain.valueOf(request.getDomain().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                // default to null if invalid to avoid breaking registration
+                user.setDomain(null);
+            }
+        }
 
         if ("admin".equalsIgnoreCase(request.getUsername())) {
             user.setRole(User.Role.ADMIN);

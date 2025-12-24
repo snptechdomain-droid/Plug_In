@@ -6,6 +6,7 @@ class Event {
   final String venue;
   final bool isPublic;
   final String? createdBy;
+  final String? eventCoordinator;
   final bool registrationStarted;
   final String? imageUrl;
   final List<EventRegistration> registrations;
@@ -18,6 +19,7 @@ class Event {
     this.venue = 'TBD',
     this.isPublic = true,
     this.createdBy,
+    this.eventCoordinator,
     this.registrationStarted = false,
     this.imageUrl,
     this.registrations = const [],
@@ -32,6 +34,7 @@ class Event {
       venue: json['venue'] ?? 'TBD',
       isPublic: json['public'] ?? true, 
       createdBy: json['createdBy'],
+      eventCoordinator: json['eventCoordinator'],
       registrationStarted: json['registrationStarted'] ?? false,
       imageUrl: json['imageUrl'],
       registrations: (json['registrations'] as List<dynamic>?)
@@ -50,6 +53,7 @@ class Event {
       'venue': venue,
       'public': isPublic,
       'createdBy': createdBy,
+      'eventCoordinator': eventCoordinator,
       'registrationStarted': registrationStarted,
       'imageUrl': imageUrl,
     };

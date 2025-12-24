@@ -20,12 +20,13 @@ public class MembershipRequest {
     private String section;
     private String registerNumber;
     private String mobileNumber;
+    private String domain;
 
     public MembershipRequest() {
     }
 
     public MembershipRequest(String name, String email, String reason, String department, String year, String section,
-            String registerNumber, String mobileNumber) {
+            String registerNumber, String mobileNumber, String domain) {
         this.name = name;
         this.email = email;
         this.reason = reason;
@@ -34,6 +35,7 @@ public class MembershipRequest {
         this.section = section;
         this.registerNumber = registerNumber;
         this.mobileNumber = mobileNumber;
+        this.domain = domain;
         this.status = "PENDING";
         this.requestDate = LocalDateTime.now();
     }
@@ -125,5 +127,13 @@ public class MembershipRequest {
 
     public void setMobileNumber(String mobileNumber) {
         this.mobileNumber = mobileNumber;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
     }
 }

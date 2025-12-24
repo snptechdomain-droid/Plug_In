@@ -176,8 +176,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             // Username Field
                             CustomTextField(
                               controller: _usernameController,
-                              labelText: 'Username',
-                              hintText: 'Enter your username',
+                              labelText: 'Username / Email',
+                              hintText: 'Enter your username or email',
                               enabled: !_isLoading,
                               prefixIcon: Icon(Icons.person_outline, color: Theme.of(context).colorScheme.primary),
                               validator: (value) {
@@ -250,13 +250,51 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     const SizedBox(height: 24),
 
-                    // Guest Link
-                    TextButton(
-                      onPressed: _isLoading
-                          ? null
-                          : () => Navigator.of(context)
-                              .pushReplacementNamed('/guest'),
-                      child: Text('Continue as guest', style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
+                    // Guest & Forgot Password
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 48,
+                            child: ElevatedButton.icon(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () => Navigator.of(context).pushReplacementNamed('/guest'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.9),
+                                foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: SvgPicture.asset(
+                                'assets/svg/guest_custom.svg',
+                                height: 18,
+                                width: 18,
+                                colorFilter: ColorFilter.mode(
+                                  Theme.of(context).colorScheme.onPrimary,
+                                  BlendMode.srcIn,
+                                ),
+                              ),
+                              label: const Text('Continue as Guest'),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: _isLoading
+                              ? null
+                              : () => Navigator.of(context).pushNamed('/forgot-password'),
+                          child: Text(
+                            'Forgot Password?',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.secondary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

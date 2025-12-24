@@ -1,3 +1,5 @@
+import 'domain.dart';
+
 /// Enum for available roles in the system
 enum UserRole {
   admin,
@@ -172,6 +174,11 @@ class UserLoginDetails {
   final DateTime? lastLogin;
   final String? bio;
   final String? avatarUrl;
+  final Domain? domain;
+  final String? registerNumber;
+  final String? year;
+  final String? section;
+  final String? department;
 
   UserLoginDetails({
     required this.username,
@@ -183,11 +190,16 @@ class UserLoginDetails {
     this.lastLogin,
     this.bio,
     this.avatarUrl,
+    this.domain,
+    this.registerNumber,
+    this.year,
+    this.section,
+    this.department,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory UserLoginDetails.fromJson(Map<String, dynamic> json) {
     return UserLoginDetails(
-      username: json['username'] ?? '',
+      username: json['displayName'] ?? json['username'] ?? '',
       email: json['email'] ?? '',
       passwordHash: json['passwordHash'] ?? '',
       role: UserRoleExtension.fromString(json['role'] ?? 'guest'),
@@ -200,6 +212,11 @@ class UserLoginDetails {
           : null,
       bio: json['bio'],
       avatarUrl: json['avatarUrl'],
+      domain: DomainExtension.fromString(json['domain'] ?? json['assignedDomain']),
+      registerNumber: json['registerNumber'],
+      year: json['year'],
+      section: json['section'],
+      department: json['department'],
     );
   }
 
@@ -214,6 +231,11 @@ class UserLoginDetails {
       'lastLogin': lastLogin?.toIso8601String(),
       'bio': bio,
       'avatarUrl': avatarUrl,
+      'domain': domain?.apiValue,
+      'registerNumber': registerNumber,
+      'year': year,
+      'section': section,
+      'department': department,
     };
   }
 
@@ -227,6 +249,11 @@ class UserLoginDetails {
     DateTime? lastLogin,
     String? bio,
     String? avatarUrl,
+    Domain? domain,
+    String? registerNumber,
+    String? year,
+    String? section,
+    String? department,
   }) {
     return UserLoginDetails(
       username: username ?? this.username,
@@ -238,6 +265,11 @@ class UserLoginDetails {
       lastLogin: lastLogin ?? this.lastLogin,
       bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      domain: domain ?? this.domain,
+      registerNumber: registerNumber ?? this.registerNumber,
+      year: year ?? this.year,
+      section: section ?? this.section,
+      department: department ?? this.department,
     );
   }
 }

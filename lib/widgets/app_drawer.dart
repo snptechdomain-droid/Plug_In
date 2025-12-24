@@ -64,6 +64,7 @@ class AppDrawer extends StatelessWidget {
                 style: theme.textTheme.headlineSmall
                     ?.copyWith(color: Colors.white)),
           ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.home, color: Colors.black87),
             title: const Text('Home'),
@@ -72,7 +73,6 @@ class AppDrawer extends StatelessWidget {
               Navigator.of(context).pushReplacementNamed('/dashboard');
             },
           ),
-          const Divider(),
           ...dashboardItems.map((item) {
             return ListTile(
               leading: SizedBox(

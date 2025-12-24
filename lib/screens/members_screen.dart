@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/models/role.dart';
+import 'package:app/models/domain.dart';
 import 'dart:convert';
 import 'package:app/widgets/glass_container.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:app/screens/member_profile_screen.dart';
 import 'package:app/screens/user_attendance_screen.dart';
 
 class MembersScreen extends StatefulWidget {
@@ -155,7 +158,8 @@ class _MembersScreenState extends State<MembersScreen> {
                                   child: FadeInAnimation(
                                     child: MemberCard(
                                       name: member.username,
-                                      role: member.role.displayName,
+                                      role: member.role,
+                                      domain: member.domain,
                                       attendance: attendancePercentage,
                                       avatarUrl: member.avatarUrl,
                                       onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
@@ -168,7 +172,10 @@ class _MembersScreenState extends State<MembersScreen> {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => UserAttendanceScreen(username: member.email),
+                                            builder: (context) => MemberProfileScreen(
+                                              member: member,
+                                              attendance: attendancePercentage,
+                                            ),
                                           ),
                                         );
                                       },
@@ -271,7 +278,17 @@ class _MembersScreenState extends State<MembersScreen> {
                 onChanged: (UserRole? value) async {
                   if (value != null) {
                     Navigator.pop(dialogContext); // Close dialog using dialogContext
-                    final success = await _roleDatabase.changeUserRole(user.email, value.value.toUpperCase());
+                    Domain? selectedDomain;
+                    if (value == UserRole.moderator) {
+                      selectedDomain = await _promptDomainSelection();
+                      if (selectedDomain == null) return;
+                    }
+
+                    final success = await _roleDatabase.changeUserRole(
+                      user.email,
+                      value.value.toUpperCase(),
+                      domain: selectedDomain,
+                    );
                     
                     if (!mounted) return; // Check if MembersScreen is mounted
 
@@ -291,6 +308,42 @@ class _MembersScreenState extends State<MembersScreen> {
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  Future<Domain?> _promptDomainSelection() async {
+    Domain? selected = Domain.tech;
+    return showDialog<Domain>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: const Text('Select Domain', style: TextStyle(color: Colors.white)),
+        content: StatefulBuilder(
+          builder: (context, setState) => DropdownButtonFormField<Domain>(
+            value: selected,
+            dropdownColor: const Color(0xFF1E1E1E),
+            iconEnabledColor: Colors.yellow,
+            items: Domain.values
+                .map((d) => DropdownMenuItem(
+                      value: d,
+                      child: Text(d.label, style: const TextStyle(color: Colors.white)),
+                    ))
+                .toList(),
+            onChanged: (val) => setState(() => selected = val),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, null),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, selected),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.yellow, foregroundColor: Colors.black),
+            child: const Text('Assign'),
+          ),
+        ],
       ),
     );
   }
@@ -331,9 +384,10 @@ class _StatCard extends StatelessWidget {
 
 class MemberCard extends StatelessWidget {
   final String name;
-  final String role;
+  final UserRole role;
   final double attendance;
   final String? avatarUrl;
+  final Domain? domain;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
@@ -343,6 +397,7 @@ class MemberCard extends StatelessWidget {
     required this.name,
     required this.role,
     required this.attendance,
+    required this.domain,
     this.avatarUrl,
     this.onEdit,
     this.onDelete,
@@ -359,6 +414,65 @@ class MemberCard extends StatelessWidget {
     }
   }
 
+  bool _isSvgData(String data) {
+    final lower = data.toLowerCase();
+    return lower.contains('svg+xml') ||
+        lower.trim().startsWith('<svg') ||
+        lower.startsWith('phn2zy'); // base64 for "<svg"
+  }
+
+  ImageProvider? _buildAvatarImage() {
+    if (avatarUrl == null || avatarUrl!.isEmpty) return null;
+    if (_isSvgData(avatarUrl!)) return null;
+
+    if (avatarUrl!.startsWith('http')) {
+      return NetworkImage(avatarUrl!);
+    }
+
+    try {
+      final bytes = base64Decode(
+          avatarUrl!.contains(',') ? avatarUrl!.split(',').last : avatarUrl!);
+      return MemoryImage(bytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _buildAvatarChild() {
+    if (avatarUrl != null && avatarUrl!.isNotEmpty && _isSvgData(avatarUrl!)) {
+      try {
+        final svgString = avatarUrl!.contains(',')
+            ? utf8.decode(base64Decode(avatarUrl!.split(',').last))
+            : avatarUrl!;
+        return SvgPicture.string(
+          svgString,
+          width: 28,
+          height: 28,
+          colorFilter: const ColorFilter.mode(Colors.yellow, BlendMode.srcIn),
+        );
+      } catch (_) {
+        // Fall through to domain badge
+      }
+    }
+    final text = domain?.shortLabel ?? name.substring(0, 1).toUpperCase();
+    final color = domain?.badgeColor ?? Colors.yellow;
+    return Text(
+      text,
+      style: TextStyle(
+        color: color,
+        fontWeight: FontWeight.bold,
+        fontSize: 16,
+      ),
+    );
+  }
+
+  String _roleLabel() {
+    if (role == UserRole.moderator) {
+      return 'Lead (${domain?.label ?? 'Domain'})';
+    }
+    return role.displayName;
+  }
+
   @override
   Widget build(BuildContext context) {
     return GlassContainer(
@@ -371,27 +485,40 @@ class MemberCard extends StatelessWidget {
         onTap: onTap,
         leading: CircleAvatar(
           radius: 24,
-          backgroundColor: Colors.yellow.withOpacity(0.2),
-          backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
-              ? (avatarUrl!.startsWith('http') 
-                  ? NetworkImage(avatarUrl!) 
-                  : MemoryImage(base64Decode(avatarUrl!.contains(',') ? avatarUrl!.split(',').last : avatarUrl!)) as ImageProvider)
-              : null,
-          child: (avatarUrl == null || avatarUrl!.isEmpty)
-              ? const Icon(
-                  Icons.person_outline,
-                  size: 28,
-                  color: Colors.yellow,
-                )
-              : null,
+          backgroundColor: (domain?.badgeColor ?? Colors.yellow).withOpacity(0.18),
+          backgroundImage: _buildAvatarImage(),
+          child: _buildAvatarChild(),
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        title: Text(
-          name,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.white),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                name,
+                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+            if (domain != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: domain!.badgeColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: domain!.badgeColor.withOpacity(0.4)),
+                ),
+                child: Text(
+                  domain!.shortLabel,
+                  style: TextStyle(
+                    color: domain!.badgeColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
         ),
         subtitle: Text(
-          role,
+          _roleLabel(),
           style: TextStyle(fontSize: 15, color: Colors.grey.shade400),
         ),
         trailing: Row(

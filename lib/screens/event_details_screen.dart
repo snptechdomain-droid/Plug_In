@@ -17,6 +17,43 @@ class EventDetailsScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final patternSvg = PatternGenerator.generateRandomSvgPattern(event.id ?? event.title);
 
+    bool _isSvg(String data) {
+      final lower = data.toLowerCase();
+      return lower.contains('svg+xml') ||
+          lower.trim().startsWith('<svg') ||
+          lower.startsWith('phn2zy'); // base64 for <svg
+    }
+
+    Widget _buildHeaderImage() {
+      if (event.imageUrl == null || event.imageUrl!.isEmpty) {
+        return SvgPicture.string(patternSvg, fit: BoxFit.cover);
+      }
+      final value = event.imageUrl!;
+      if (value.startsWith('http')) {
+        if (value.toLowerCase().endsWith('.svg')) {
+          return SvgPicture.network(value, fit: BoxFit.cover);
+        }
+        return Image.network(value, fit: BoxFit.cover);
+      }
+
+      if (_isSvg(value)) {
+        try {
+          final svgString = value.contains(',')
+              ? utf8.decode(base64Decode(value.split(',').last))
+              : utf8.decode(base64Decode(value));
+          return SvgPicture.string(svgString, fit: BoxFit.cover);
+        } catch (_) {
+          return SvgPicture.string(patternSvg, fit: BoxFit.cover);
+        }
+      }
+
+      try {
+        return Image.memory(base64Decode(value), fit: BoxFit.cover);
+      } catch (_) {
+        return SvgPicture.string(patternSvg, fit: BoxFit.cover);
+      }
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -30,14 +67,7 @@ class EventDetailsScreen extends StatelessWidget {
         children: [
           // 1. Dynamic Pattern or Uploaded Image
           Positioned.fill(
-             child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
-                 ? (event.imageUrl!.startsWith('http') 
-                     ? Image.network(event.imageUrl!, fit: BoxFit.cover)
-                     : Image.memory(base64Decode(event.imageUrl!), fit: BoxFit.cover))
-                 : SvgPicture.string(
-                      patternSvg,
-                      fit: BoxFit.cover,
-                   ),
+             child: _buildHeaderImage(),
           ),
           
           // 2. Glassy Overlay/Gradient for readability

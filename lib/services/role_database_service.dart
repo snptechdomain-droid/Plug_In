@@ -1,13 +1,14 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:app/models/domain.dart';
 import 'package:app/models/role.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 
 class RoleBasedDatabaseService {
   static final RoleBasedDatabaseService _instance =
-      RoleBasedDatabaseService._internal();
+  RoleBasedDatabaseService._internal();
 
   factory RoleBasedDatabaseService() {
     return _instance;
@@ -86,7 +87,7 @@ class RoleBasedDatabaseService {
   Future<bool> addUser(UserLoginDetails user) async {
     try {
       final users = await getAllUsers();
-      
+
       // Check if user already exists
       if (users.any((u) => u.username == user.username)) {
         return false;
@@ -144,7 +145,7 @@ class RoleBasedDatabaseService {
     try {
       final users = await getAllUsers();
       return users.firstWhere(
-        (u) => u.username == username,
+            (u) => u.username == username,
         orElse: () => UserLoginDetails(
           username: '',
           email: '',
@@ -168,31 +169,31 @@ class RoleBasedDatabaseService {
     final url = Uri.parse('${_getBaseUrl()}/api/auth/login');
     try {
       print('Attempting login to: $url');
-      
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
-          'password': password, 
+          'password': password,
         }),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
+
         final user = UserLoginDetails(
           username: data['displayName'] ?? data['email'],
           email: data['email'],
           passwordHash: data['passwordHash'] ?? '',
           role: UserRoleExtension.fromString(data['role'] ?? 'GUEST'),
-          isActive: true, 
+          isActive: true,
           createdAt: data['createdAt'] != null ? DateTime.parse(data['createdAt']) : DateTime.now(),
           lastLogin: DateTime.now(),
           bio: data['bio'],
           avatarUrl: data['avatarUrl'],
         );
-        
+
         await setCurrentUser(user);
         return (user, null); // Success
       } else if (response.statusCode == 404) {
@@ -215,10 +216,15 @@ class RoleBasedDatabaseService {
     required String username,
     required String password,
     required String key,
+    String? registerNumber,
+    String? year,
+    String? section,
+    String? department,
+    Domain? domain,
   }) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/auth/register');
-      
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -226,6 +232,11 @@ class RoleBasedDatabaseService {
           'username': username,
           'password': password,
           'key': key,
+          if (registerNumber != null) 'registerNumber': registerNumber,
+          if (year != null) 'year': year,
+          if (section != null) 'section': section,
+          if (department != null) 'department': department,
+          if (domain != null) 'domain': domain.apiValue,
         }),
       );
 
@@ -243,21 +254,29 @@ class RoleBasedDatabaseService {
   Future<List<UserLoginDetails>> getAllUsers() async {
     // 1. Try fetching from Backend
     try {
-      final url = Uri.parse('${_getBaseUrl()}/api/users');
+      final viewer = await getCurrentUser();
+      final viewerEmail = viewer?.email;
+      final url = Uri.parse(
+          '${_getBaseUrl()}/api/users${viewerEmail != null ? '?viewerEmail=${Uri.encodeComponent(viewerEmail)}' : ''}');
       final response = await http.get(url).timeout(const Duration(seconds: 3));
-      
+
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         final backendUsers = data.map((json) {
-            return UserLoginDetails(
-              username: json['displayName'] ?? json['email'] ?? 'Unknown',
-              email: json['email'] ?? '',
-              passwordHash: '', 
-              role: UserRoleExtension.fromString(json['role'] ?? 'GUEST'),
-              isActive: true,
-              bio: json['bio'],
-              avatarUrl: json['avatarUrl'],
-            );
+          return UserLoginDetails(
+            username: json['displayName'] ?? json['username'] ?? json['email'] ?? 'Unknown',
+            email: json['email'] ?? '',
+            passwordHash: '',
+            role: UserRoleExtension.fromString(json['role'] ?? 'GUEST'),
+            isActive: true,
+            bio: json['bio'],
+            avatarUrl: json['avatarUrl'],
+            domain: DomainExtension.fromString(json['domain']),
+            registerNumber: json['registerNumber'],
+            year: json['year'],
+            section: json['section'],
+            department: json['department'],
+          );
         }).toList();
         return backendUsers;
       }
@@ -414,30 +433,41 @@ class RoleBasedDatabaseService {
   }
 
   String _getBaseUrl() {
-    // static const String _baseUrl = 'http://192.168.1.3:9000/api'; // Local Mobile Dev
+    // Allows the Android Emulator to connect to your local IntelliJ backend
+    if (kDebugMode) {
+      return 'http://10.0.2.2:7860';
+    }
     // Production Cloud URL
-    return 'https://snp-tech-backend.hf.space'; 
+    return 'https://snp-tech-backend.hf.space';
   }
-
   /// Fetch all users from Backend API
   Future<List<UserLoginDetails>> fetchAllUsers() async {
     try {
-      final url = Uri.parse('${_getBaseUrl()}/api/users');
+      final viewer = await getCurrentUser();
+      final viewerEmail = viewer?.email;
+      final url = Uri.parse(
+          '${_getBaseUrl()}/api/users${viewerEmail != null ? '?viewerEmail=${Uri.encodeComponent(viewerEmail)}' : ''}');
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => UserLoginDetails(
-          username: json['displayName'] ?? json['username'], 
+          username: json['displayName'] ?? json['username'] ?? '',
           email: json['email'] ?? '',
-          passwordHash: '', 
+          passwordHash: '',
           role: UserRoleExtension.fromString(json['role'] ?? 'MEMBER'),
-          isActive: true,
-          createdAt: DateTime.now(), 
-          lastLogin: DateTime.now(), 
+          isActive: json['active'] ?? true,
+          createdAt: DateTime.now(),
+          lastLogin: DateTime.now(),
           bio: json['bio'],
           avatarUrl: json['avatarUrl'],
-        )).toList();
+          domain: DomainExtension.fromString(json['domain']),
+          registerNumber: json['registerNumber'],
+          year: json['year'],
+          section: json['section'],
+          department: json['department'],
+        ))
+            .toList();
       } else {
         print('Failed to fetch users: ${response.body}');
         return [];
@@ -471,7 +501,7 @@ class RoleBasedDatabaseService {
         final currentUser = await getCurrentUser();
         if (currentUser != null && currentUser.email == username) {
           final updatedUser = currentUser.copyWith(
-            username: displayName, 
+            username: displayName,
             bio: bio,
             avatarUrl: avatarUrl,
           );
@@ -512,19 +542,117 @@ class RoleBasedDatabaseService {
     }
   }
 
-  Future<bool> changeUserRole(String username, String newRole) async {
+  // ---- Forgot Password Flow ----
+  Future<(bool, String?)> requestPasswordReset(String usernameOrEmail) async {
+    try {
+      final url = Uri.parse('${_getBaseUrl()}/api/users/forgot-password/request');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'usernameOrEmail': usernameOrEmail}),
+      );
+      if (response.statusCode == 200) {
+        return (true, null);
+      }
+      if (response.statusCode == 404) {
+        return (false, 'User does not exist');
+      }
+      return (false, response.body.isNotEmpty ? response.body : 'Unable to start reset');
+    } catch (e) {
+      print('Error requesting password reset: $e');
+      return (false, 'Connection error');
+    }
+  }
+
+  Future<(bool, String?)> verifyPasswordOtp(String usernameOrEmail, String otp) async {
+    try {
+      final url = Uri.parse('${_getBaseUrl()}/api/users/forgot-password/verify');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'usernameOrEmail': usernameOrEmail, 'otp': otp}),
+      );
+      if (response.statusCode == 200) return (true, null);
+      if (response.statusCode == 404) return (false, 'User does not exist');
+      return (false, 'Invalid OTP');
+    } catch (e) {
+      print('Error verifying OTP: $e');
+      return (false, 'Connection error');
+    }
+  }
+
+  Future<(bool, String?)> resetPasswordWithOtp(
+      String usernameOrEmail, String otp, String newPassword) async {
+    try {
+      final url = Uri.parse('${_getBaseUrl()}/api/users/forgot-password/reset');
+      final response = await http.put(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'usernameOrEmail': usernameOrEmail,
+          'otp': otp,
+          'newPassword': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return (true, null);
+      }
+      return (false, response.body.isNotEmpty ? response.body : null);
+    } catch (e) {
+      print('Error resetting password: $e');
+      return (false, e.toString());
+    }
+  }
+
+  Future<bool> changeUserRole(String username, String newRole, {Domain? domain}) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/users/$username/role');
       final response = await http.put(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'role': newRole}),
+        body: jsonEncode({
+          'role': newRole,
+          if (domain != null) 'domain': domain.apiValue,
+        }),
       );
       return response.statusCode == 200;
     } catch (e) {
       print('Error changing user role: $e');
       return false;
     }
+  }
+
+  /// Fetch only active members for coordinator dropdown
+  Future<List<UserLoginDetails>> fetchMembers() async {
+    try {
+      final viewer = await getCurrentUser();
+      final viewerEmail = viewer?.email;
+      final url = Uri.parse(
+          '${_getBaseUrl()}/api/users/members${viewerEmail != null ? '?viewerEmail=${Uri.encodeComponent(viewerEmail)}' : ''}');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data
+            .map((json) => UserLoginDetails(
+          username: json['displayName'] ?? json['email'] ?? '',
+          email: json['email'] ?? '',
+          passwordHash: '',
+          role: UserRoleExtension.fromString(json['role'] ?? 'MEMBER'),
+          isActive: json['active'] ?? true,
+          avatarUrl: json['avatarUrl'],
+          domain: DomainExtension.fromString(json['domain']),
+          registerNumber: json['registerNumber'],
+          year: json['year'],
+          section: json['section'],
+          department: json['department'],
+        ))
+            .toList();
+      }
+    } catch (e) {
+      print('Error fetching members: $e');
+    }
+    return [];
   }
 
   Future<bool> deleteUserFromBackend(String username) async {
@@ -536,6 +664,26 @@ class RoleBasedDatabaseService {
       print('Error deleting user: $e');
       return false;
     }
+  }
+
+  Future<UserLoginDetails?> fetchUserProfile(String query) async {
+    try {
+      final viewer = await getCurrentUser();
+      final viewerEmail = viewer?.email;
+      final encodedQuery = Uri.encodeComponent(query);
+      final url = Uri.parse(
+          '${_getBaseUrl()}/api/users/find?query=$encodedQuery${viewerEmail != null ? '&viewerEmail=${Uri.encodeComponent(viewerEmail)}' : ''}');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return UserLoginDetails.fromJson(data);
+      } else {
+        print('Failed to fetch profile: ${response.body}');
+      }
+    } catch (e) {
+      print('Error fetching profile: $e');
+    }
+    return null;
   }
 
   // -------------------- ANNOUNCEMENT METHODS --------------------
@@ -605,7 +753,7 @@ class RoleBasedDatabaseService {
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode(registrationData),
       );
-      
+
       return response.statusCode == 200;
     } catch (e) {
       print('Error registering for event: $e');
@@ -615,17 +763,17 @@ class RoleBasedDatabaseService {
 
   Future<List<Map<String, dynamic>>> fetchAttendanceRecords() async {
     try {
-       final url = Uri.parse('${_getBaseUrl()}/api/attendance');
-       final response = await http.get(url);
+      final url = Uri.parse('${_getBaseUrl()}/api/attendance');
+      final response = await http.get(url);
 
-       if (response.statusCode == 200) {
-         final List<dynamic> data = jsonDecode(response.body);
-         return data.cast<Map<String, dynamic>>();
-       }
-     } catch (e) {
-       print('Error fetching attendance: $e');
-     }
-     return [];
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.cast<Map<String, dynamic>>();
+      }
+    } catch (e) {
+      print('Error fetching attendance: $e');
+    }
+    return [];
   }
 
   Future<bool> markAttendance(List<String> presentUserIds, String notes) async {
@@ -689,7 +837,7 @@ class RoleBasedDatabaseService {
   // -------------------- PROJECT & POLL METHODS --------------------
 
   Future<String?> _getToken() async {
-    return "dummy_token"; 
+    return "dummy_token";
   }
 
   Future<List<Map<String, dynamic>>> getUserProjects(String userId) async {
@@ -767,7 +915,7 @@ class RoleBasedDatabaseService {
         body: jsonEncode({
           'question': question,
           'options': options,
-          'createdBy': (await getCurrentUser())?.email, 
+          'createdBy': (await getCurrentUser())?.email,
           'multiSelect': multiSelect,
         }),
       );

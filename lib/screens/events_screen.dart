@@ -20,12 +20,15 @@ class _EventsScreenState extends State<EventsScreen> {
   List<Event> _events = [];
   bool _isLoading = true;
   bool _canEdit = false; // Admin or Moderator
+  List<UserLoginDetails> _members = [];
+  bool _loadingMembers = false;
 
   @override
   void initState() {
     super.initState();
     _checkPermissions();
     _loadEvents();
+    _loadMembers();
   }
 
   Future<void> _checkPermissions() async {
@@ -48,7 +51,21 @@ class _EventsScreenState extends State<EventsScreen> {
     }
   }
 
+  Future<void> _loadMembers() async {
+    setState(() => _loadingMembers = true);
+    final members = await _databaseService.fetchMembers();
+    if (mounted) {
+      setState(() {
+        _members = members;
+        _loadingMembers = false;
+      });
+    }
+  }
+
   Future<void> _showEventDialog({Event? event}) async {
+    if (_members.isEmpty && !_loadingMembers) {
+      _loadMembers();
+    }
     final isEditing = event != null;
     final titleController = TextEditingController(text: event?.title ?? '');
     final descriptionController = TextEditingController(text: event?.description ?? '');
@@ -58,6 +75,7 @@ class _EventsScreenState extends State<EventsScreen> {
     DateTime selectedDate = event?.date ?? DateTime.now();
     bool isPublic = event?.isPublic ?? true;
     bool registrationStarted = event?.registrationStarted ?? false;
+    String? selectedCoordinator = event?.eventCoordinator;
     
     String? currentImageUrl = event?.imageUrl;
     Uint8List? newImageBytes;
@@ -138,6 +156,36 @@ class _EventsScreenState extends State<EventsScreen> {
                   controller: venueController,
                   decoration: const InputDecoration(labelText: 'Venue'),
                 ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Event Coordinator',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedCoordinator,
+                  isExpanded: true,
+                  hint: const Text('Select coordinator'),
+                  items: (_members.isEmpty
+                          ? <UserLoginDetails>[]
+                          : _members)
+                      .map((user) => DropdownMenuItem(
+                            value: user.email,
+                            child: Text(user.username),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setState(() {
+                    selectedCoordinator = value;
+                  }),
+                ),
+                if (_loadingMembers)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8.0),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -192,6 +240,7 @@ class _EventsScreenState extends State<EventsScreen> {
                   date: selectedDate,
                   isPublic: isPublic,
                   imageUrl: finalBase64Image,
+                  eventCoordinator: selectedCoordinator,
                   registrationStarted: registrationStarted,
                   createdBy: (await _databaseService.getCurrentUser())?.username ?? 'Admin',
                 ).toJson();

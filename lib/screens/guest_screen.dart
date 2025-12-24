@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:app/models/announcement.dart';
 import 'package:app/models/event.dart';
+import 'package:app/models/domain.dart';
 import 'package:app/screens/announcements_screen.dart' as announcements_data;
 import 'package:app/screens/events_screen.dart' as events_data;
 import 'package:intl/intl.dart';
@@ -34,6 +35,7 @@ class _GuestScreenState extends State<GuestScreen> {
   final _registerNumberController = TextEditingController();
   final _mobileNumberController = TextEditingController();
   final _reasonController = TextEditingController();
+  Domain? _selectedDomain;
   bool _isSubmitting = false;
 
   @override
@@ -57,7 +59,8 @@ class _GuestScreenState extends State<GuestScreen> {
         _emailController.text.isEmpty ||
         _departmentController.text.isEmpty ||
         _registerNumberController.text.isEmpty ||
-        _mobileNumberController.text.isEmpty) {
+        _mobileNumberController.text.isEmpty ||
+        _selectedDomain == null) {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all required fields')));
        return;
     }
@@ -73,6 +76,7 @@ class _GuestScreenState extends State<GuestScreen> {
       'registerNumber': _registerNumberController.text,
       'mobileNumber': _mobileNumberController.text,
       'reason': _reasonController.text,
+      'domain': _selectedDomain?.apiValue,
     });
 
     if (mounted) {
@@ -86,6 +90,9 @@ class _GuestScreenState extends State<GuestScreen> {
         _registerNumberController.clear();
         _mobileNumberController.clear();
         _reasonController.clear();
+        setState(() {
+          _selectedDomain = null;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Application sent successfully!'), backgroundColor: Colors.green),
         );
@@ -244,7 +251,22 @@ class _GuestScreenState extends State<GuestScreen> {
                            Expanded(child: _buildGlassTextField(_sectionController, 'Section', Icons.class_)),
                         ]),
                         const SizedBox(height: 16),
-                        _buildGlassTextField(_reasonController, 'Why join?', Icons.edit, maxLines: 3),
+                        DropdownButtonFormField<Domain>(
+                          value: _selectedDomain,
+                          decoration: const InputDecoration(
+                            labelText: 'Domain',
+                            prefixIcon: Icon(Icons.category),
+                          ),
+                          items: Domain.values
+                              .map((d) => DropdownMenuItem(
+                                    value: d,
+                                    child: Text(d.label),
+                                  ))
+                              .toList(),
+                          onChanged: (val) => setState(() => _selectedDomain = val),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildGlassTextField(_reasonController, 'Why join SNP?', Icons.edit, maxLines: 3),
                         
                         const SizedBox(height: 24),
                         SizedBox(
@@ -330,6 +352,50 @@ class EventCard extends StatelessWidget {
     // Use generated pattern for card bg with low opacity
     final cardPattern = PatternGenerator.generateRandomSvgPattern(event.id ?? event.title);
 
+    bool _isSvg(String data) {
+      final lower = data.toLowerCase();
+      return lower.contains('svg+xml') ||
+          lower.trim().startsWith('<svg') ||
+          lower.startsWith('phn2zy');
+    }
+
+    Widget _buildBackground() {
+      if (event.imageUrl == null || event.imageUrl!.isEmpty) {
+        return Opacity(
+            opacity: 0.1, child: SvgPicture.string(cardPattern, fit: BoxFit.cover));
+      }
+      final value = event.imageUrl!;
+      if (value.startsWith('http')) {
+        if (value.toLowerCase().endsWith('.svg')) {
+          return Opacity(
+              opacity: 0.2, child: SvgPicture.network(value, fit: BoxFit.cover));
+        }
+        return Opacity(
+            opacity: 0.2, child: Image.network(value, fit: BoxFit.cover));
+      }
+
+      if (_isSvg(value)) {
+        try {
+          final svgString = value.contains(',')
+              ? utf8.decode(base64Decode(value.split(',').last))
+              : utf8.decode(base64Decode(value));
+          return Opacity(
+              opacity: 0.2, child: SvgPicture.string(svgString, fit: BoxFit.cover));
+        } catch (_) {
+          return Opacity(
+              opacity: 0.1, child: SvgPicture.string(cardPattern, fit: BoxFit.cover));
+        }
+      }
+
+      try {
+        return Opacity(
+            opacity: 0.2, child: Image.memory(base64Decode(value), fit: BoxFit.cover));
+      } catch (_) {
+        return Opacity(
+            opacity: 0.1, child: SvgPicture.string(cardPattern, fit: BoxFit.cover));
+      }
+    }
+
     return Container(
       width: 280,
       margin: const EdgeInsets.only(right: 16),
@@ -341,17 +407,7 @@ class EventCard extends StatelessWidget {
           children: [
             // Background Pattern or Image
             Positioned.fill(
-                child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
-                    ? Opacity(
-                        opacity: 0.2, // Subtle background image
-                        child: event.imageUrl!.startsWith('http')
-                            ? Image.network(event.imageUrl!, fit: BoxFit.cover)
-                            : Image.memory(base64Decode(event.imageUrl!), fit: BoxFit.cover),
-                      )
-                    : Opacity(
-                        opacity: 0.1, 
-                        child: SvgPicture.string(cardPattern, fit: BoxFit.cover)
-                    ),
+                child: _buildBackground(),
             ),
             
             Padding(
