@@ -18,20 +18,7 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuth();
   }
 
-  Future<void> _requestPermissions() async {
-    if (kIsWeb) return; // Permissions are handled differently on web
-    
-    Map<Permission, PermissionStatus> statuses = await [
-      Permission.camera,
-      Permission.storage,
-      Permission.photos,
-      Permission.notification,
-    ].request();
-    print("Permissions status: $statuses");
-  }
-
   Future<void> _checkAuth() async {
-    await _requestPermissions();
     await Future.delayed(const Duration(seconds: 1)); // Show splash for a moment
     if (!mounted) return;
 

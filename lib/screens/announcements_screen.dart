@@ -154,11 +154,13 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen> {
             )
           : null,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.black, Color(0xFF1A1A1A)],
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [Colors.black, const Color(0xFF1A1A1A)]
+                : [const Color(0xFFF5F7FA), Colors.white],
           ),
         ),
         child: _isLoading
@@ -196,12 +198,14 @@ class AnnouncementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16.0),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withOpacity(0.1)),
-      color: Colors.white,
+      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
+      color: isDark ? Colors.white : Colors.black, // Invert base color for glass effect
       opacity: 0.05,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -213,7 +217,7 @@ class AnnouncementCard extends StatelessWidget {
                 child: Text(
                   announcement.title,
                   style: theme.textTheme.titleLarge?.copyWith(
-                    color: Colors.yellow,
+                    color: isDark ? Colors.yellow : theme.colorScheme.primary, // Yellow in dark, black/primary in light
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -221,12 +225,14 @@ class AnnouncementCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   DateFormat.MMMd().format(announcement.date),
-                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.white70),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: isDark ? Colors.white70 : Colors.black87,
+                  ),
                 ),
               ),
             ],
@@ -235,13 +241,13 @@ class AnnouncementCard extends StatelessWidget {
            if (announcement.authorName != null)
             Row(
               children: [
-                const Icon(Icons.person, size: 14, color: Colors.grey),
+                Icon(Icons.person, size: 14, color: isDark ? Colors.grey : Colors.grey[600]),
                 const SizedBox(width: 4),
                 Text(
                   '${announcement.authorName}',
                   style: theme.textTheme.labelSmall?.copyWith(
                     fontStyle: FontStyle.italic, 
-                    color: Colors.grey[400]
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
                   ),
                 ),
               ],
@@ -249,7 +255,9 @@ class AnnouncementCard extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             announcement.content, 
-            style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white.withOpacity(0.9))
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: isDark ? Colors.white.withOpacity(0.9) : Colors.black87,
+            )
           ),
         ],
       ),

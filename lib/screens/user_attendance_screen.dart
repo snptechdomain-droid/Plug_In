@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/widgets/glass_container.dart';
 import 'package:intl/intl.dart';
+import 'package:app/models/role.dart';
 
 class UserAttendanceScreen extends StatefulWidget {
   final String username;
@@ -25,12 +26,52 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final history = await _roleDatabase.fetchUserAttendance(widget.username);
-    if (mounted) {
-      setState(() {
-        _attendanceHistory = history;
-        _isLoading = false;
-      });
+    
+    try {
+      // 1. Fetch target user to get createdAt
+      // 1. Fetch target user to get createdAt - Try specific fetch first
+      var user = await _roleDatabase.getUserByUsername(widget.username);
+      
+      if (user == null) {
+         // Fallback: try searching in all users list as backup
+         final allUsers = await _roleDatabase.getAllUsers();
+         user = allUsers.firstWhere(
+            (u) => u.email == widget.username || u.username == widget.username,
+            orElse: () => UserLoginDetails(
+              username: widget.username, 
+              email: '', 
+              passwordHash: '', 
+              role: UserRole.member,
+              createdAt: DateTime(2000), // Fallback to 2000 to show ALL history if date unknown
+            ),
+         );
+      }
+      
+      final joinDate = user.createdAt;
+
+      // 2. Fetch all raw attendance history
+      final history = await _roleDatabase.fetchUserAttendance(widget.username);
+      
+      // 3. Filter history based on joinDate
+      final filteredHistory = history.where((record) {
+        if (record['date'] == null) return false;
+        final recordDate = RoleBasedDatabaseService.parseDate(record['date']).toUtc();
+        final joinDateUtc = joinDate.toUtc();
+        // Include events strictly after joining OR if they were marked present
+        return recordDate.isAfter(joinDateUtc) || record['status'] == 'PRESENT';
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _attendanceHistory = filteredHistory;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading attendance history: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -44,22 +85,31 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
   Widget build(BuildContext context) {
     final percentage = _calculatePercentage();
     final isPresentable = percentage >= 75.0;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Attendance History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Attendance History', 
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black, // Dark text on light
+            fontWeight: FontWeight.bold
+          )
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black), // Dark icon on light
         flexibleSpace: GlassContainer(child: Container(), opacity: 0.1, blur: 10),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.black, Color(0xFF1E1E1E)],
+            colors: isDark
+                ? [Colors.black, const Color(0xFF1E1E1E)]
+                : [const Color(0xFFF5F7FA), Colors.white], // Light gradient
           ),
         ),
         child: _isLoading
@@ -73,9 +123,9 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                     child: GlassContainer(
                       padding: const EdgeInsets.all(24),
                       borderRadius: BorderRadius.circular(16),
-                      color: Colors.white,
+                      color: isDark ? Colors.white : Colors.black, // Invert base color
                       opacity: 0.05,
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -88,16 +138,26 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                                   color: isPresentable ? Colors.greenAccent : Colors.redAccent
                                 )
                               ),
-                              const Text('Attendance Rate', style: TextStyle(color: Colors.grey)),
+                              Text('Attendance Rate', 
+                                style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600])
+                              ),
                             ],
                           ),
-                          Container(height: 50, width: 1, color: Colors.white24),
+                          Container(height: 50, width: 1, 
+                            color: isDark ? Colors.white24 : Colors.black12
+                          ),
                           Column(
                             children: [
                               Text('${_attendanceHistory.length}', 
-                                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white)
+                                style: TextStyle(
+                                  fontSize: 32, 
+                                  fontWeight: FontWeight.bold, 
+                                  color: isDark ? Colors.white : Colors.black
+                                )
                               ),
-                              const Text('Total Sessions', style: TextStyle(color: Colors.grey)),
+                              Text('Total Sessions', 
+                                style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600])
+                              ),
                             ],
                           ),
                         ],
@@ -113,7 +173,7 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                       itemBuilder: (context, index) {
                         final record = _attendanceHistory[index];
                         final isPresent = record['status'] == 'PRESENT';
-                        final date = DateTime.parse(record['date']);
+                        final date = RoleBasedDatabaseService.parseDate(record['date']);
                         final notes = record['notes'];
 
                         return Padding(
@@ -121,7 +181,9 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                           child: GlassContainer(
                             borderRadius: BorderRadius.circular(12),
                             color: isPresent ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                            // Tint background slightly for status, keep generic base
                             opacity: 0.05,
+                            border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
                             child: ListTile(
                               leading: Icon(
                                 isPresent ? Icons.check_circle : Icons.cancel,
@@ -130,10 +192,15 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                               ),
                               title: Text(
                                 DateFormat('MMM dd, yyyy - hh:mm a').format(date.toLocal()),
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black87, 
+                                  fontWeight: FontWeight.bold
+                                ),
                               ),
                               subtitle: notes != null && notes.isNotEmpty 
-                                ? Text(notes, style: const TextStyle(color: Colors.white70))
+                                ? Text(notes, 
+                                    style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)
+                                  )
                                 : null,
                               trailing: Text(
                                 isPresent ? 'PRESENT' : 'ABSENT',
