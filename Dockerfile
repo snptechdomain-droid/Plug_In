@@ -1,13 +1,25 @@
-# Build Stage
-FROM maven:3.9-eclipse-temurin-17 AS build
-WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn clean package -DskipTests && ls -la /app/target
+# Use official OpenJDK 17 image as the base
+FROM eclipse-temurin:17-jdk-alpine
 
-# Run Stage
-FROM eclipse-temurin:17-jre-alpine
+# Set the working directory
 WORKDIR /app
-COPY --from=build /app/target/backend-*.jar app.jar
+
+# Copy the Maven wrapper/build files
+COPY backend/mvnw .
+COPY backend/.mvn .mvn
+COPY backend/pom.xml .
+COPY backend/src src
+
+# Make mvnw executable
+RUN chmod +x mvnw
+
+# Build the application
+# We skip tests to speed up build on HF Spaces
+RUN ./mvnw clean package -DskipTests
+
+# Expose port (HF Spaces expects 7860)
 EXPOSE 7860
-ENTRYPOINT ["java", "-Xmx300m", "-Xss512k", "-jar", "app.jar"]
+
+# Run the jar file
+# Adjust the jar name pattern if needed, typically it's target/backend-0.0.1-SNAPSHOT.jar
+CMD ["java", "-jar", "target/backend-0.0.1-SNAPSHOT.jar", "--server.port=7860"]
