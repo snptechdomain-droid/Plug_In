@@ -1,21 +1,13 @@
-# Use official OpenJDK 17 image as the base
-FROM eclipse-temurin:17-jdk-alpine
-
-# Set the working directory
+# Build Stage
+FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
-
-# Install Maven
-RUN apk add --no-cache maven
-
-# Copy the build files
 COPY pom.xml .
-COPY src src
+COPY src ./src
+RUN mvn clean package -DskipTests && ls -la /app/target
 
-# Build the application
-RUN mvn clean package -DskipTests
-
-# Expose port (HF Spaces expects 7860)
+# Run Stage
+FROM eclipse-temurin:17-jre-alpine
+WORKDIR /app
+COPY --from=build /app/target/backend-*.jar app.jar
 EXPOSE 7860
-
-# Run the jar file
-CMD ["java", "-jar", "target/backend-0.0.1-SNAPSHOT.jar", "--server.port=7860"]
+ENTRYPOINT ["java", "-Xmx300m", "-Xss512k", "-jar", "app.jar"]
