@@ -14,13 +14,27 @@ public class RegisterRequest {
     private String password;
     private String key;
 
+    // New Fields
+    private String registerNumber;
+    private String year;
+    private String section;
+    private String department;
+    private String domain;
+
     public RegisterRequest() {
     }
 
-    public RegisterRequest(String username, String password, String key) {
+    public RegisterRequest(String username, String password, String key,
+            String registerNumber, String year, String section,
+            String department, String domain) {
         this.username = username;
         this.password = password;
         this.key = key;
+        this.registerNumber = registerNumber;
+        this.year = year;
+        this.section = section;
+        this.department = department;
+        this.domain = domain;
     }
 
     public String getUsername() {

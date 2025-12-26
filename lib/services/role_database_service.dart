@@ -224,6 +224,11 @@ class RoleBasedDatabaseService {
     required String username,
     required String password,
     required String key,
+    String? registerNumber,
+    String? year,
+    String? section,
+    String? department,
+    String? domain,
   }) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/auth/register');
@@ -235,6 +240,11 @@ class RoleBasedDatabaseService {
           'username': username,
           'password': password,
           'key': key,
+          'registerNumber': registerNumber,
+          'year': year,
+          'section': section,
+          'department': department,
+          'domain': domain,
         }),
       );
 
@@ -246,6 +256,28 @@ class RoleBasedDatabaseService {
     } catch (e) {
       return (false, 'Registration failed: $e');
     }
+  }
+
+  // --- Password Reset Methods (Mocked/Placeholder for now) ---
+  Future<bool> requestPasswordReset(String username) async {
+    // TODO: Implement actual Backend API call: POST /api/auth/forgot-password
+    await Future.delayed(const Duration(seconds: 2)); // Simulate network
+    print('OTP requested for $username');
+    return true; 
+  }
+
+  Future<bool> verifyOtp(String username, String otp) async {
+     // TODO: Implement actual Backend API call: POST /api/auth/verify-otp
+    await Future.delayed(const Duration(seconds: 2));
+    print('Verifying OTP $otp for $username');
+    return otp == "123456"; // Mock success for testing
+  }
+
+  Future<bool> resetPasswordWithOtp(String username, String otp, String newPassword) async {
+    // TODO: Implement actual Backend API call: POST /api/auth/reset-password
+    await Future.delayed(const Duration(seconds: 2));
+    print('Resetting password for $username');
+    return true;
   }
 
   /// Get all users (Backend + Local fallback)

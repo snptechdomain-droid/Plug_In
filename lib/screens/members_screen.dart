@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:app/widgets/glass_container.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:app/screens/user_attendance_screen.dart';
+import 'package:app/screens/member_profile_screen.dart';
+import 'package:app/models/domain.dart';
 
 import 'package:app/widgets/app_drawer.dart';
 
@@ -153,6 +155,7 @@ class _MembersScreenState extends State<MembersScreen> {
                                       role: member.role.displayName,
                                       attendance: attendancePercentage,
                                       avatarUrl: member.avatarUrl,
+                                      domain: member.domain, // Pass domain
                                       isDark: isDark,
                                       onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
                                           ? () => _showRoleDialog(member)
@@ -164,7 +167,10 @@ class _MembersScreenState extends State<MembersScreen> {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
-                                            builder: (context) => UserAttendanceScreen(username: member.email),
+                                            builder: (context) => MemberProfileScreen(
+                                              member: member, 
+                                              attendance: attendancePercentage
+                                            ),
                                           ),
                                         );
                                       },
@@ -369,11 +375,12 @@ class MemberCard extends StatelessWidget {
   final String name;
   final String role;
   final double attendance;
-  final String? avatarUrl;
+  final String? avatarUrl; // Added missing field
+  final String? domain; // Added
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
-  final bool isDark; // Added
+  final bool isDark; 
 
   const MemberCard({
     super.key,
@@ -381,10 +388,11 @@ class MemberCard extends StatelessWidget {
     required this.role,
     required this.attendance,
     this.avatarUrl,
+    this.domain, // Added
     this.onEdit,
     this.onDelete,
     this.onTap,
-    required this.isDark, // Added
+    required this.isDark, 
   });
 
   Color _getAttendanceColor(double percentage) {
@@ -397,8 +405,24 @@ class MemberCard extends StatelessWidget {
     }
   }
 
+  Color _getDomainColor(String? domainStr) {
+    if (domainStr == null) return Colors.grey;
+    final domainEnum = DomainExtension.fromString(domainStr);
+    switch (domainEnum) {
+      case Domain.management: return Colors.blue;
+      case Domain.tech: return Colors.tealAccent;
+      case Domain.webDev: return Colors.cyan;
+      case Domain.content: return Colors.purpleAccent;
+      case Domain.design: return Colors.pinkAccent;
+      case Domain.marketing: return Colors.orangeAccent;
+      default: return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final domainColor = _getDomainColor(domain);
+
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
       borderRadius: BorderRadius.circular(16),
@@ -409,24 +433,45 @@ class MemberCard extends StatelessWidget {
         onTap: onTap,
         leading: CircleAvatar(
           radius: 24,
-          backgroundColor: isDark ? Colors.yellow.withOpacity(0.2) : Colors.blue.withOpacity(0.1),
+          backgroundColor: domainColor.withOpacity(0.2), // Use domain color
           backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
               ? (avatarUrl!.startsWith('http') 
                   ? NetworkImage(avatarUrl!) 
                   : MemoryImage(base64Decode(avatarUrl!.contains(',') ? avatarUrl!.split(',').last : avatarUrl!)) as ImageProvider)
               : null,
           child: (avatarUrl == null || avatarUrl!.isEmpty)
-              ? Icon(
-                  Icons.person_outline,
-                  size: 28,
-                  color: isDark ? Colors.yellow : Colors.blue,
+              ? Text(
+                  domain != null ? DomainExtension.fromString(domain!)?.code ?? 'U' : 'U',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: domainColor),
                 )
               : null,
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        title: Text(
-          name,
-          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+        title: Row(
+          children: [
+             if (domain != null) ...[
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: domainColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: domainColor.withOpacity(0.5), width: 0.5),
+                ),
+                child: Text(
+                  domain!.toUpperCase(),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: domainColor),
+                ),
+              ),
+            ],
+            Flexible(
+              child: Text(
+                name,
+                style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
         ),
         subtitle: Text(
           role,

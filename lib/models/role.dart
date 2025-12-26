@@ -173,9 +173,16 @@ class UserLoginDetails {
   final DateTime? lastLogin;
   final String? bio;
   final String? avatarUrl;
+  
+  // New Fields for Domain Features
+  final String? domain;
+  final String? department;
+  final String? year;
+  final String? section;
+  final String? registerNumber;
 
   UserLoginDetails({
-    this.id = '', // Default empty
+    this.id = '', 
     required this.username,
     required this.email,
     required this.passwordHash,
@@ -185,6 +192,11 @@ class UserLoginDetails {
     this.lastLogin,
     this.bio,
     this.avatarUrl,
+    this.domain,
+    this.department,
+    this.year,
+    this.section,
+    this.registerNumber,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory UserLoginDetails.fromJson(Map<String, dynamic> json) {
@@ -205,6 +217,11 @@ class UserLoginDetails {
           : null,
       bio: json['bio'],
       avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),
+      domain: json['domain'],
+      department: json['department'],
+      year: json['year'],
+      section: json['section'],
+      registerNumber: json['registerNumber'],
     );
   }
 
@@ -220,6 +237,11 @@ class UserLoginDetails {
       'lastLogin': lastLogin?.toIso8601String(),
       'bio': bio,
       'avatarUrl': avatarUrl,
+      'domain': domain,
+      'department': department,
+      'year': year,
+      'section': section,
+      'registerNumber': registerNumber,
     };
   }
 
@@ -234,6 +256,11 @@ class UserLoginDetails {
     DateTime? lastLogin,
     String? bio,
     String? avatarUrl,
+    String? domain,
+    String? department,
+    String? year,
+    String? section,
+    String? registerNumber,
   }) {
     return UserLoginDetails(
       id: id ?? this.id,
@@ -246,6 +273,11 @@ class UserLoginDetails {
       lastLogin: lastLogin ?? this.lastLogin,
       bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      domain: domain ?? this.domain,
+      department: department ?? this.department,
+      year: year ?? this.year,
+      section: section ?? this.section,
+      registerNumber: registerNumber ?? this.registerNumber,
     );
   }
 }

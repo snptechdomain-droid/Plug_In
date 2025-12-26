@@ -77,10 +77,30 @@ public class AuthController {
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setDisplayName(request.getUsername());
 
-        if ("admin".equalsIgnoreCase(request.getUsername())) {
-            user.setRole(User.Role.ADMIN);
+        // Map new fields
+        user.setRegisterNumber(request.getRegisterNumber());
+        user.setYear(request.getYear());
+        user.setSection(request.getSection());
+        user.setDepartment(request.getDepartment());
+
+        if (request.getDomain() != null && !request.getDomain().isEmpty()) {
+            user.setDomain(request.getDomain());
+
+            // Auto-Admin Logic: First user in a domain becomes ADMIN
+            long domainCount = userRepository.countByDomain(request.getDomain());
+            if (domainCount == 0) {
+                user.setRole(User.Role.ADMIN);
+            } else {
+                user.setRole(User.Role.MEMBER);
+            }
         } else {
-            user.setRole(User.Role.MEMBER);
+            // Fallback for non-domain users (default to MEMBER, or Admin if username is
+            // 'admin')
+            if ("admin".equalsIgnoreCase(request.getUsername())) {
+                user.setRole(User.Role.ADMIN);
+            } else {
+                user.setRole(User.Role.MEMBER);
+            }
         }
 
         user.setAvatarUrl("https://api.dicebear.com/7.x/avataaars/png?seed=" + request.getUsername());

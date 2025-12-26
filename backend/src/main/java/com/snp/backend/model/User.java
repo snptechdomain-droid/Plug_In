@@ -24,6 +24,13 @@ public class User {
     private String bio;
     private boolean active = true;
 
+    // New Fields
+    private String domain;
+    private String department;
+    private String year;
+    private String section;
+    private String registerNumber;
+
     private Role role;
 
     @CreatedDate
@@ -130,5 +137,45 @@ public class User {
 
     public void setLastAnnouncementRead(Instant lastAnnouncementRead) {
         this.lastAnnouncementRead = lastAnnouncementRead;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getSection() {
+        return section;
+    }
+
+    public void setSection(String section) {
+        this.section = section;
+    }
+
+    public String getRegisterNumber() {
+        return registerNumber;
+    }
+
+    public void setRegisterNumber(String registerNumber) {
+        this.registerNumber = registerNumber;
     }
 }
