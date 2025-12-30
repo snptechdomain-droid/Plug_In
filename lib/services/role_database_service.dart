@@ -206,6 +206,7 @@ class RoleBasedDatabaseService {
           year: data['year'],
           section: data['section'],
           registerNumber: data['registerNumber'],
+          mobileNumber: data['mobileNumber'],
         );
         
         await setCurrentUser(user);
@@ -227,15 +228,17 @@ class RoleBasedDatabaseService {
 
   /// Register new user via Backend API
   Future<(bool success, String message)> register({
-    required String username,
+    required String username, // This is the Email/Identifier
+    required String name, // NEW: Display Name
     required String password,
     required String key,
     String? registerNumber,
     String? year,
     String? section,
     String? department,
-    String? department,
-    List<String>? domains, // Changed from single String to List
+    String? email, // Optional explicit email if different (legacy)
+    String? mobileNumber,
+    List<String>? domains, 
   }) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/auth/register');
@@ -244,14 +247,16 @@ class RoleBasedDatabaseService {
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'username': username,
+          'username': username, // Sends email as username
+          'name': name,         // Sends display name
           'password': password,
           'key': key,
           'registerNumber': registerNumber,
           'year': year,
           'section': section,
           'department': department,
-          'domains': domains, // Send list
+          'mobileNumber': mobileNumber,
+          'domains': domains,
         }),
       );
 
@@ -359,10 +364,15 @@ class RoleBasedDatabaseService {
     }
   }
 
+  UserLoginDetails? _cachedUser; 
+
+  UserLoginDetails? get currentUser => _cachedUser;
+
   /// Set current logged-in user
   Future<void> setCurrentUser(UserLoginDetails user) async {
     try {
       await _ensureInitialized();
+      _cachedUser = user;
       await _prefs?.setString(_currentUserKey, jsonEncode(user.toJson()));
     } catch (e) {
       print('Error setting current user: $e');
@@ -379,7 +389,9 @@ class RoleBasedDatabaseService {
         return null;
       }
 
-      return UserLoginDetails.fromJson(jsonDecode(userJson));
+      final user = UserLoginDetails.fromJson(jsonDecode(userJson));
+      _cachedUser = user;
+      return user;
     } catch (e) {
       print('Error getting current user: $e');
       return null;
@@ -390,6 +402,7 @@ class RoleBasedDatabaseService {
   Future<void> clearCurrentUser() async {
     try {
       await _ensureInitialized();
+      _cachedUser = null;
       await _prefs?.remove(_currentUserKey);
     } catch (e) {
       print('Error clearing current user: $e');
@@ -498,6 +511,7 @@ class RoleBasedDatabaseService {
           year: json['year'],
           section: json['section'],
           registerNumber: json['registerNumber'],
+          mobileNumber: json['mobileNumber'],
         )).toList();
       } else {
         print('Failed to fetch users: ${response.body}');
@@ -510,13 +524,22 @@ class RoleBasedDatabaseService {
   }
 
   /// Update user profile via Backend API
-  Future<bool> updateUserProfile(String username, String displayName, String bio, String? avatarUrl) async {
+  Future<bool> updateUserProfile(String username, String displayName, String bio, String? avatarUrl, 
+      {String? department, String? year, String? section, String? registerNumber, String? mobileNumber, String? newEmail}) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/users/$username');
       final body = {
         'displayName': displayName,
         'bio': bio,
+        'department': department,
+        'year': year,
+        'section': section,
+        'registerNumber': registerNumber,
+        'mobileNumber': mobileNumber,
       };
+      if (newEmail != null && newEmail.isNotEmpty) {
+        body['email'] = newEmail;
+      }
       if (avatarUrl != null && avatarUrl.isNotEmpty) {
         body['avatarUrl'] = avatarUrl;
       }
@@ -535,6 +558,12 @@ class RoleBasedDatabaseService {
             username: displayName, 
             bio: bio,
             avatarUrl: avatarUrl,
+            department: department,
+            year: year,
+            section: section,
+            registerNumber: registerNumber,
+            mobileNumber: mobileNumber,
+            email: newEmail,
           );
           await setCurrentUser(updatedUser);
         }
@@ -1018,6 +1047,16 @@ class RoleBasedDatabaseService {
       return response.statusCode == 200;
     } catch (e) {
       print('Error updating membership request: $e');
+      return false;
+    }
+  }
+  Future<bool> triggerDomainBackfill() async {
+    try {
+      final url = Uri.parse('${_getBaseUrl()}/api/admin/backfill-domains');
+      final response = await http.post(url);
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error triggering backfill: $e');
       return false;
     }
   }

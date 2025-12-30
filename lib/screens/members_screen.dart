@@ -101,10 +101,20 @@ class _MembersScreenState extends State<MembersScreen> {
 
 
 
+  String _searchText = '';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    
+    // Filter Members
+    final filteredMembers = _members.where((m) {
+       final q = _searchText.toLowerCase();
+       return m.username.toLowerCase().contains(q) || 
+              (m.registerNumber?.toLowerCase().contains(q) ?? false) ||
+              (m.department?.toLowerCase().contains(q) ?? false);
+    }).toList();
 
     return Scaffold(
       drawer: const AppDrawer(currentRoute: '/members'),
@@ -118,6 +128,37 @@ class _MembersScreenState extends State<MembersScreen> {
         backgroundColor: Colors.transparent,
         iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
         actions: [
+          // Admin Backfill Button
+          if (_currentUser?.role == UserRole.admin)
+             IconButton(
+               icon: Icon(Icons.auto_fix_high, color: isDark ? Colors.purpleAccent : Colors.purple),
+               tooltip: 'Backfill Random Domains',
+               onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (c) => AlertDialog(
+                      title: const Text('Backfill Data?'),
+                      content: const Text('This will assign random domains to users who have none.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Proceed')),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                     setState(() => _isLoading = true);
+                     final success = await _roleDatabase.triggerDomainBackfill();
+                     if (success) _loadData(); // Reload
+                     if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(success ? 'Backfill complete!' : 'Backfill failed'),
+                        ));
+                        if (!success) setState(() => _isLoading = false);
+                     }
+                  }
+               },
+             ),
+
           IconButton(
             icon: Icon(Icons.refresh, color: isDark ? Colors.yellow : Colors.blue), // Yellow/Blue refresh
             onPressed: () => _loadData(), // Fixed lambda reference
@@ -130,6 +171,13 @@ class _MembersScreenState extends State<MembersScreen> {
           borderRadius: BorderRadius.zero,
         ),
       ),
+      floatingActionButton: (_currentUser?.role == UserRole.admin)
+          ? FloatingActionButton(
+              onPressed: _showAddMemberDialog,
+              backgroundColor: isDark ? Colors.purpleAccent : Colors.purple,
+              child: const Icon(Icons.person_add),
+            )
+          : null,
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -142,85 +190,111 @@ class _MembersScreenState extends State<MembersScreen> {
         ),
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.yellow))
-            : _members.isEmpty
-                ? Center(child: Text('No members found', style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600])))
-                : Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(top: 100.0, left: 16, right: 16, bottom: 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: _StatCard(
-                                title: 'Total Members',
-                                value: _members.length.toString(),
-                                icon: Icons.group,
-                                color: Colors.blueAccent,
-                                isDark: isDark,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _StatCard(
-                                title: 'Avg. Attendance',
-                                value: '${_calculateAverageAttendance().toStringAsFixed(1)}%',
-                                icon: Icons.bar_chart,
-                                color: Colors.greenAccent,
-                                isDark: isDark,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Expanded(
-                        child: AnimationLimiter(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                            itemCount: _members.length,
-                            itemBuilder: (context, index) {
-                              final member = _members[index];
-                              final attendancePercentage = _attendanceMap[member.username] ?? 0.0;
-
-                              return AnimationConfiguration.staggeredList(
-                                position: index,
-                                duration: const Duration(milliseconds: 375),
-                                child: SlideAnimation(
-                                  verticalOffset: 50.0,
-                                  child: FadeInAnimation(
-                                    child: MemberCard(
-                                      name: member.username,
-                                      role: member.role.displayName,
-                                      attendance: attendancePercentage,
-                                      avatarUrl: member.avatarUrl,
-                                      domains: member.domains, // Pass list
-                                      isDark: isDark,
-                                      onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
-                                          ? () => _showRoleDialog(member)
-                                          : null,
-                                      onDelete: _canDelete(member)
-                                          ? () => _confirmDelete(member)
-                                          : null,
-                                      onTap: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) => MemberProfileScreen(
-                                              member: member, 
-                                              attendance: attendancePercentage
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+            : Column(
+                children: [
+                  // Stats Row
+                  Padding(
+                    padding: const EdgeInsets.only(top: 100.0, left: 16, right: 16, bottom: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            title: 'Total Members',
+                            value: _members.length.toString(),
+                            icon: Icons.group,
+                            color: Colors.blueAccent,
+                            isDark: isDark,
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _StatCard(
+                            title: 'Avg. Attendance',
+                            value: '${_calculateAverageAttendance().toStringAsFixed(1)}%',
+                            icon: Icons.bar_chart,
+                            color: Colors.greenAccent,
+                            isDark: isDark,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  
+                  // Search Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: TextField(
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      decoration: InputDecoration(
+                        hintText: 'Search by name, reg no...',
+                        hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.grey[600]),
+                        prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey : Colors.grey[600]),
+                        filled: true,
+                        fillColor: isDark ? Colors.grey[900] : Colors.grey[200],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                      ),
+                      onChanged: (val) => setState(() => _searchText = val),
+                    ),
+                  ),
+
+                  // List
+                  Expanded(
+                    child: filteredMembers.isEmpty 
+                      ? Center(child: Text('No members found', style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600])))
+                      : AnimationLimiter(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        itemCount: filteredMembers.length,
+                        itemBuilder: (context, index) {
+                          final member = filteredMembers[index];
+                          final attendancePercentage = _attendanceMap[member.username] ?? 0.0;
+
+                          return AnimationConfiguration.staggeredList(
+                            position: index,
+                            duration: const Duration(milliseconds: 375),
+                            child: SlideAnimation(
+                              verticalOffset: 50.0,
+                              child: FadeInAnimation(
+                                child: MemberCard(
+                                  name: member.username,
+                                  role: member.role.displayName,
+                                  attendance: attendancePercentage,
+                                  avatarUrl: member.avatarUrl,
+                                  domains: member.domains, 
+                                  // New Details
+                                  registerNumber: member.registerNumber,
+                                  department: member.department,
+                                  year: member.year,
+                                  
+                                  isDark: isDark,
+                                  onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
+                                      ? () => _showRoleDialog(member)
+                                      : null,
+                                  onDelete: _canDelete(member)
+                                      ? () => _confirmDelete(member)
+                                      : null,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => MemberProfileScreen(
+                                          member: member, 
+                                          attendance: attendancePercentage
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -363,11 +437,140 @@ class _MembersScreenState extends State<MembersScreen> {
                       );
                     }
                   }
-                },
+
+},
               ),
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+  void _showAddMemberDialog() {
+    final nameCtrl = TextEditingController();
+    final emailCtrl = TextEditingController();
+    final deptCtrl = TextEditingController();
+    final yearCtrl = TextEditingController();
+    final sectionCtrl = TextEditingController();
+    final regCtrl = TextEditingController();
+    final mobileCtrl = TextEditingController();
+    List<String> selectedDomains = [];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+          
+          return AlertDialog(
+            backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            title: Text('Add New Member', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                   TextField(
+                     controller: nameCtrl, 
+                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                     decoration: InputDecoration(labelText: 'Full Name', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                   ),
+                   TextField(
+                     controller: emailCtrl, 
+                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                     decoration: InputDecoration(labelText: 'Email Address', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                   ),
+                   TextField(
+                     controller: regCtrl, 
+                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                     decoration: InputDecoration(labelText: 'Register Number', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                   ),
+                   Row(children: [
+                      Expanded(child: TextField(
+                        controller: deptCtrl, 
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        decoration: InputDecoration(labelText: 'Dept', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextField(
+                        controller: yearCtrl, 
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        decoration: InputDecoration(labelText: 'Year', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                      )),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextField(
+                        controller: sectionCtrl, 
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        decoration: InputDecoration(labelText: 'Sec', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                      )),
+                   ]),
+                   TextField(
+                     controller: mobileCtrl, 
+                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                     decoration: InputDecoration(labelText: 'Mobile Number', labelStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54))
+                   ),
+                   const SizedBox(height: 16),
+                   Text('Domains', style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+                   const SizedBox(height: 8),
+                   Wrap(
+                     spacing: 8,
+                     children: ['management', 'tech', 'webdev', 'content', 'design', 'marketing'].map((d) {
+                       final isSelected = selectedDomains.contains(d);
+                       return FilterChip(
+                         label: Text(d.toUpperCase()),
+                         labelStyle: TextStyle(color: isSelected ? (isDark ? Colors.black : Colors.white) : (isDark ? Colors.white : Colors.black)),
+                         selected: isSelected,
+                         selectedColor: isDark ? Colors.yellow : Colors.blue,
+                         checkmarkColor: isDark ? Colors.black : Colors.white,
+                         backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                         onSelected: (val) {
+                           setState(() {
+                             if (val) selectedDomains.add(d);
+                             else selectedDomains.remove(d);
+                           });
+                         },
+                       );
+                     }).toList(),
+                   ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
+                   
+                  final result = await _roleDatabase.register(
+                    username: emailCtrl.text, 
+                    name: nameCtrl.text,
+                    password: regCtrl.text.isNotEmpty ? regCtrl.text : 'welcome123', 
+                    key: 'SnP_newmember',
+                    registerNumber: regCtrl.text,
+                    department: deptCtrl.text,
+                    year: yearCtrl.text,
+                    section: sectionCtrl.text,
+                    mobileNumber: mobileCtrl.text,
+                    domains: selectedDomains,
+                  );
+
+                  if (result.$1) { 
+                     if (context.mounted) {
+                       Navigator.pop(context);
+                       _loadData(); 
+                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member added successfully')));
+                     }
+                  } else {
+                     if (context.mounted) {
+                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.$2)));
+                     }
+                  }
+                },
+                child: const Text('Add Member'),
+              ),
+            ],
+          );
+        }
       ),
     );
   }
@@ -418,6 +621,9 @@ class MemberCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
+  final String? registerNumber;
+  final String? department;
+  final String? year;
   final bool isDark; 
 
   const MemberCard({
@@ -427,7 +633,10 @@ class MemberCard extends StatelessWidget {
     required this.attendance,
     this.avatarUrl,
     this.domain, 
-    this.domains = const [], // Added
+    this.domains = const [],
+    this.registerNumber,
+    this.department,
+    this.year,
     this.onEdit,
     this.onDelete,
     this.onTap,
@@ -526,15 +735,29 @@ class MemberCard extends StatelessWidget {
             Flexible(
               child: Text(
                 name,
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-        subtitle: Text(
-          role,
-          style: TextStyle(fontSize: 15, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700),
+        subtitle: Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+           children: [
+             Text(
+               role,
+               style: TextStyle(fontSize: 13, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700, fontWeight: FontWeight.w500),
+             ),
+             if (registerNumber != null || department != null)
+               Padding(
+                 padding: const EdgeInsets.only(top: 2),
+                 child: Text(
+                   '${department ?? "-"} | ${year ?? "-"} | ${registerNumber ?? "-"}',
+                   style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade500 : Colors.grey.shade600),
+                   maxLines: 1, overflow: TextOverflow.ellipsis,
+                 ),
+               ),
+           ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -562,4 +785,5 @@ class MemberCard extends StatelessWidget {
       ),
     );
   }
+
 }

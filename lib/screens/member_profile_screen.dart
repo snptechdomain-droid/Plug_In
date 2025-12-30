@@ -3,6 +3,7 @@ import 'package:app/models/role.dart';
 import 'package:app/widgets/glass_container.dart';
 import 'package:app/models/domain.dart';
 import 'package:app/screens/user_attendance_screen.dart';
+import 'package:app/services/role_database_service.dart';
 
 class MemberProfileScreen extends StatelessWidget {
   final UserLoginDetails member;
@@ -47,6 +48,12 @@ class MemberProfileScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: IconThemeData(color: textColor),
+        actions: [
+           IconButton(
+             icon: const Icon(Icons.edit),
+             onPressed: () => _showEditProfileDialog(context),
+           ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -105,6 +112,7 @@ class MemberProfileScreen extends StatelessWidget {
                    _infoRow('Department', member.department ?? 'N/A', textColor),
                    _infoRow('Year', member.year ?? 'N/A', textColor),
                    _infoRow('Section', member.section ?? 'N/A', textColor),
+                   _infoRow('Mobile', member.mobileNumber ?? 'N/A', textColor),
                    _infoRow('Role', member.role.name.toUpperCase(), textColor),
                 ],
               ),
@@ -193,6 +201,89 @@ class MemberProfileScreen extends StatelessWidget {
       child: Text(
         domain.toUpperCase(),
         style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+      ),
+    );
+  }
+  bool get _isCurrentUser => member.email == RoleBasedDatabaseService().currentUser?.email; // Need to access current user nicely. 
+  // Actually MemberProfileScreen is stateless, so we assume the parent passed correct data or we check simplistic equality if we had current user passed.
+  // For now, let's just add the edit button and let logic decide.
+  // Wait, MemberProfileScreen is often pushed.
+
+  void _showEditProfileDialog(BuildContext context) {
+    final nameCtrl = TextEditingController(text: member.username); // username is display name
+    final bioCtrl = TextEditingController(text: member.bio ?? '');
+    final deptCtrl = TextEditingController(text: member.department ?? '');
+    final yearCtrl = TextEditingController(text: member.year ?? '');
+    final secCtrl = TextEditingController(text: member.section ?? '');
+    final regCtrl = TextEditingController(text: member.registerNumber ?? '');
+    final mobileCtrl = TextEditingController(text: member.mobileNumber ?? '');
+    final emailCtrl = TextEditingController(text: member.email); // Email controller
+    
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final theme = Theme.of(context);
+          final isDark = theme.brightness == Brightness.dark;
+          return AlertDialog(
+             backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+             title: Text('Edit Profile', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+             content: SingleChildScrollView(
+               child: Column(
+                 mainAxisSize: MainAxisSize.min,
+                 children: [
+                    TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Display Name')),
+                    TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address')), // Email Field
+                    TextField(controller: bioCtrl, decoration: const InputDecoration(labelText: 'Bio')),
+                    const Divider(),
+                    TextField(controller: regCtrl, decoration: const InputDecoration(labelText: 'Register Number')),
+                    TextField(controller: mobileCtrl, decoration: const InputDecoration(labelText: 'Mobile Number')),
+                    Row(children: [
+                        Expanded(child: TextField(controller: deptCtrl, decoration: const InputDecoration(labelText: 'Dept'))),
+                        const SizedBox(width: 8),
+                        Expanded(child: TextField(controller: yearCtrl, decoration: const InputDecoration(labelText: 'Year'))),
+                        const SizedBox(width: 8),
+                        Expanded(child: TextField(controller: secCtrl, decoration: const InputDecoration(labelText: 'Sec'))),
+                    ]),
+                    const SizedBox(height: 10),
+                    const Text('Role and Domain cannot be changed here.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                 ],
+               ),
+             ),
+             actions: [
+               TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+               ElevatedButton(
+                 onPressed: () async {
+                    final service = RoleBasedDatabaseService();
+                    final success = await service.updateUserProfile(
+                      member.email, 
+                      nameCtrl.text, 
+                      bioCtrl.text, 
+                      member.avatarUrl,
+                      department: deptCtrl.text,
+                      year: yearCtrl.text,
+                      section: secCtrl.text,
+                      registerNumber: regCtrl.text,
+                      mobileNumber: mobileCtrl.text,
+                      newEmail: emailCtrl.text.trim() != member.email ? emailCtrl.text.trim() : null, // Pass new email if changed
+                    );
+                    
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      if (success) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Updated!')));
+                        // Trigger rebuild? Stateless widget won't rebuild. 
+                        // ideally we should pop the screen or use a state management solution.
+                        // For now simply pop the screen to return to previous, or replacing logic.
+                        // Or just let user know.
+                      }
+                    }
+                 },
+                 child: const Text('Save'),
+               ),
+             ],
+          );
+        }
       ),
     );
   }

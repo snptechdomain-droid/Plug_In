@@ -181,6 +181,7 @@ class UserLoginDetails {
   final String? year;
   final String? section;
   final String? registerNumber;
+  final String? mobileNumber;
 
   UserLoginDetails({
     this.id = '', 
@@ -199,6 +200,7 @@ class UserLoginDetails {
     this.year,
     this.section,
     this.registerNumber,
+    this.mobileNumber,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory UserLoginDetails.fromJson(Map<String, dynamic> json) {
@@ -225,6 +227,7 @@ class UserLoginDetails {
       year: json['year'],
       section: json['section'],
       registerNumber: json['registerNumber'],
+      mobileNumber: json['mobileNumber'],
     );
   }
 
@@ -246,6 +249,7 @@ class UserLoginDetails {
       'year': year,
       'section': section,
       'registerNumber': registerNumber,
+      'mobileNumber': mobileNumber,
     };
   }
 
@@ -265,6 +269,7 @@ class UserLoginDetails {
     String? year,
     String? section,
     String? registerNumber,
+    String? mobileNumber,
   }) {
     return UserLoginDetails(
       id: id ?? this.id,
@@ -282,6 +287,7 @@ class UserLoginDetails {
       year: year ?? this.year,
       section: section ?? this.section,
       registerNumber: registerNumber ?? this.registerNumber,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
     );
   }
 }

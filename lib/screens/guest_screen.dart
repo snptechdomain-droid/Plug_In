@@ -34,7 +34,56 @@ class _GuestScreenState extends State<GuestScreen> {
   final _registerNumberController = TextEditingController();
   final _mobileNumberController = TextEditingController();
   final _reasonController = TextEditingController();
+  List<String> _selectedDomains = []; // Multi-select list
   bool _isSubmitting = false;
+
+  void _showDomainDialog() async {
+    final domains = ['management', 'tech', 'webdev', 'content', 'design', 'marketing'];
+    
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Domains'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: domains.map((domain) {
+                    final isSelected = _selectedDomains.contains(domain);
+                    return CheckboxListTile(
+                      title: Text(domain.toUpperCase()),
+                      value: isSelected,
+                      onChanged: (checked) {
+                        setState(() {
+                          if (checked == true) {
+                            if (!_selectedDomains.contains(domain)) {
+                              _selectedDomains.add(domain);
+                            }
+                          } else {
+                            _selectedDomains.remove(domain);
+                          }
+                        });
+                        // Update parent state as well to reflect in background immediately or after close
+                        this.setState(() {}); 
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -73,6 +122,7 @@ class _GuestScreenState extends State<GuestScreen> {
       'registerNumber': _registerNumberController.text,
       'mobileNumber': _mobileNumberController.text,
       'reason': _reasonController.text,
+      'domains': _selectedDomains,
     });
 
     if (mounted) {
@@ -243,6 +293,47 @@ class _GuestScreenState extends State<GuestScreen> {
                            const SizedBox(width: 12),
                            Expanded(child: _buildGlassTextField(_sectionController, 'Section', Icons.class_)),
                         ]),
+                        const SizedBox(height: 16),
+                        
+                        // Multi-Select Domain Field
+                        InkWell(
+                          onTap: _showDomainDialog,
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 60),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.work, size: 24, color: Theme.of(context).primaryColor),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (_selectedDomains.isNotEmpty)
+                                        Text('Domains', style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor)),
+                                      Text(
+                                        _selectedDomains.isEmpty 
+                                            ? 'Select Domains' 
+                                            : _selectedDomains.map((e) => e.toUpperCase()).join(', '),
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: _selectedDomains.isEmpty ? Colors.grey[700] : (theme.brightness == Brightness.dark ? Colors.white : Colors.black),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_drop_down),
+                              ],
+                            ),
+                          ),
+                        ),
+                        
                         const SizedBox(height: 16),
                         _buildGlassTextField(_reasonController, 'Why join?', Icons.edit, maxLines: 3),
                         

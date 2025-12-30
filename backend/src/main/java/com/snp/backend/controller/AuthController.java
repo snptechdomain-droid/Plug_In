@@ -68,20 +68,22 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Invalid security key");
         }
 
-        if (userRepository.findByEmail(request.getUsername() + "@snp.com").isPresent()) {
-            return ResponseEntity.badRequest().body("Username already exists");
+        if (userRepository.findByEmail(request.getUsername()).isPresent()) {
+            return ResponseEntity.badRequest().body("Username/Email already exists");
         }
 
         User user = new User();
-        user.setEmail(request.getUsername() + "@snp.com");
+        user.setEmail(request.getUsername()); // Use raw email/username
+
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setDisplayName(request.getUsername());
+        user.setDisplayName(request.getName());
 
         // Map new fields
         user.setRegisterNumber(request.getRegisterNumber());
         user.setYear(request.getYear());
         user.setSection(request.getSection());
         user.setDepartment(request.getDepartment());
+        user.setMobileNumber(request.getMobileNumber());
 
         if (request.getDomains() != null && !request.getDomains().isEmpty()) {
             user.setDomains(request.getDomains());

@@ -14,11 +14,15 @@ public class RegisterRequest {
     private String password;
     private String key;
 
+    @NotBlank(message = "Name is required")
+    private String name;
+
     // New Fields
     private String registerNumber;
     private String year;
     private String section;
     private String department;
+    private String mobileNumber;
     private String domain;
 
     public RegisterRequest() {
@@ -61,6 +65,14 @@ public class RegisterRequest {
         this.key = key;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String getRegisterNumber() {
         return registerNumber;
     }
@@ -91,6 +103,14 @@ public class RegisterRequest {
 
     public void setDepartment(String department) {
         this.department = department;
+    }
+
+    public String getMobileNumber() {
+        return mobileNumber;
+    }
+
+    public void setMobileNumber(String mobileNumber) {
+        this.mobileNumber = mobileNumber;
     }
 
     private java.util.List<String> domains;

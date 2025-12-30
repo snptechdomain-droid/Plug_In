@@ -37,11 +37,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadCurrentUser() async {
-    final user = await _roleDatabase.getCurrentUser();
+    // 1. Load from local cache
+    var user = await _roleDatabase.getCurrentUser();
     if (mounted) {
       setState(() {
         _currentUser = user;
       });
+    }
+    
+    // 2. Refresh from backend to get latest fields (mobile, etc.)
+    if (user != null) {
+      try {
+        final allUsers = await _roleDatabase.getAllUsers();
+        final freshUser = allUsers.firstWhere(
+            (u) => u.email == user.email, 
+            orElse: () => user!
+        );
+        
+        // Update if we got fresh data
+        if (freshUser != user) {
+           await _roleDatabase.setCurrentUser(freshUser);
+           if (mounted) {
+             setState(() {
+               _currentUser = freshUser;
+             });
+           }
+        }
+      } catch (e) {
+        print('Error checking for profile updates: $e');
+      }
     }
   }
   bool _notificationsEnabled = true;
@@ -261,13 +285,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ✏️ Edit Profile Dialog
   void _showEditProfileDialog(BuildContext context) {
     final nameController = TextEditingController(text: _currentUser?.username ?? '');
-    final bioController = TextEditingController(); 
-    // Initialize avatar controller with current avatar URL if available
-    // For now, we assume if it starts with 'data:image', it's base64, else it's a URL or empty
-    // But since we don't have avatar in UserLoginDetails yet (wait, we need to check if we added it to the model)
-    // We haven't added avatarUrl to UserLoginDetails model yet! 
-    // I should probably add it to the model first, but for now let's just handle the upload logic.
-    // The user asked to "directly upload", so we'll use a local variable to store the base64 string.
+    final bioController = TextEditingController(text: _currentUser?.bio ?? ''); 
+    final emailController = TextEditingController(text: _currentUser?.email ?? '');
+    final regController = TextEditingController(text: _currentUser?.registerNumber ?? '');
+    final mobileController = TextEditingController(text: _currentUser?.mobileNumber ?? '');
+    final deptController = TextEditingController(text: _currentUser?.department ?? '');
+    final yearController = TextEditingController(text: _currentUser?.year ?? '');
+    final secController = TextEditingController(text: _currentUser?.section ?? '');
     
     String? _newAvatarBase64;
     
@@ -334,6 +358,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email Address',
+                      prefixIcon: Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
                     controller: bioController,
                     decoration: const InputDecoration(
                       labelText: 'Bio',
@@ -342,6 +375,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     maxLines: 2,
                   ),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(
+                      child: TextField(
+                        controller: mobileController,
+                        decoration: const InputDecoration(
+                          labelText: 'Mobile',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: regController,
+                        decoration: const InputDecoration(
+                          labelText: 'Register No',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: TextField(controller: deptController, decoration: const InputDecoration(labelText: 'Dept', border: OutlineInputBorder()))),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextField(controller: yearController, decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()))),
+                    const SizedBox(width: 8),
+                    Expanded(child: TextField(controller: secController, decoration: const InputDecoration(labelText: 'Sec', border: OutlineInputBorder()))),
+                  ]),
                   
                   const Divider(height: 32),
                   
@@ -436,6 +499,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     nameController.text,
                     bioController.text,
                     avatarToSend,
+                    department: deptController.text,
+                    year: yearController.text,
+                    section: secController.text,
+                    registerNumber: regController.text,
+                    mobileNumber: mobileController.text,
+                    newEmail: emailController.text.trim() != _currentUser!.email ? emailController.text.trim() : null,
                   );
                 if (success) {
                   if (context.mounted) {

@@ -30,6 +30,7 @@ public class User {
     private String year;
     private String section;
     private String registerNumber;
+    private String mobileNumber;
 
     private Role role;
 
@@ -189,5 +190,13 @@ public class User {
 
     public void setRegisterNumber(String registerNumber) {
         this.registerNumber = registerNumber;
+    }
+
+    public String getMobileNumber() {
+        return mobileNumber;
+    }
+
+    public void setMobileNumber(String mobileNumber) {
+        this.mobileNumber = mobileNumber;
     }
 }

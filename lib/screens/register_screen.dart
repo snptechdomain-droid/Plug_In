@@ -11,6 +11,7 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   String _username = '';
+  String _name = '';
   String _password = '';
   String _key = '';
   bool _isLoading = false;
@@ -20,7 +21,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _year = 'I';
   String _section = '';
   String _department = 'CSE';
-  String _department = 'CSE';
+
   List<String> _selectedDomains = []; // Multi-select list
 
   final _auth = RoleBasedDatabaseService();
@@ -85,7 +86,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() { _isLoading = true; _error = null; });
     
     final (success, message) = await _auth.register(
-      username: _username,
+      username: _username, // Email/User ID
+      name: _name,         // Full Name
       password: _password,
       key: _key,
       registerNumber: _registerNumber,
@@ -132,7 +134,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      decoration: const InputDecoration(labelText: 'Username', prefixIcon: Icon(Icons.person)),
+                      decoration: const InputDecoration(labelText: 'Full Name', prefixIcon: Icon(Icons.badge)),
+                      onChanged: (v) => _name = v,
+                      validator: (v) => v!.isEmpty ? 'Enter name' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      decoration: const InputDecoration(labelText: 'Email / Username', prefixIcon: Icon(Icons.email)),
                       onChanged: (v) => _username = v,
                       validator: (v) => v!.isEmpty ? 'Enter username' : null,
                     ),

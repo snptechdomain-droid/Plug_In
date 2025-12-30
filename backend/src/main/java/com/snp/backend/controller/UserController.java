@@ -42,6 +42,25 @@ public class UserController {
         if (updatedUser.getAvatarUrl() != null) {
             user.setAvatarUrl(updatedUser.getAvatarUrl());
         }
+        // New Fields
+        if (updatedUser.getRegisterNumber() != null)
+            user.setRegisterNumber(updatedUser.getRegisterNumber());
+        if (updatedUser.getYear() != null)
+            user.setYear(updatedUser.getYear());
+        if (updatedUser.getSection() != null)
+            user.setSection(updatedUser.getSection());
+        if (updatedUser.getDepartment() != null)
+            user.setDepartment(updatedUser.getDepartment());
+        if (updatedUser.getMobileNumber() != null)
+            user.setMobileNumber(updatedUser.getMobileNumber());
+        if (updatedUser.getEmail() != null && !updatedUser.getEmail().equals(user.getEmail())) {
+            // Check if new email is taken
+            if (userRepository.findByEmail(updatedUser.getEmail()).isPresent()) {
+                throw new RuntimeException("Email already in use");
+            }
+            user.setEmail(updatedUser.getEmail());
+            // Note: If email is used as login username, this changes login credential.
+        }
 
         return userRepository.save(user);
     }

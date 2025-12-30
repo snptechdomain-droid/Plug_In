@@ -25,7 +25,7 @@ class _MembershipRequestsScreenState extends State<MembershipRequestsScreen> {
     final data = await _databaseService.fetchMembershipRequests();
     if (mounted) {
       setState(() {
-        _requests = data;
+        _requests = data.reversed.toList();
         _isLoading = false;
       });
     }
