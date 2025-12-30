@@ -126,4 +126,14 @@ public class MembershipRequest {
     public void setMobileNumber(String mobileNumber) {
         this.mobileNumber = mobileNumber;
     }
+
+    private java.util.List<String> domains = new java.util.ArrayList<>();
+
+    public java.util.List<String> getDomains() {
+        return domains;
+    }
+
+    public void setDomains(java.util.List<String> domains) {
+        this.domains = domains;
+    }
 }

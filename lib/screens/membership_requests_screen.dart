@@ -31,9 +31,62 @@ class _MembershipRequestsScreenState extends State<MembershipRequestsScreen> {
     }
   }
 
-  Future<void> _updateStatus(String id, String status) async {
-    await _databaseService.updateMembershipRequestStatus(id, status);
+  Future<void> _updateStatus(String id, String status, {List<String>? approvedDomains}) async {
+    await _databaseService.updateMembershipRequestStatus(id, status, approvedDomains: approvedDomains);
     _loadRequests();
+  }
+  
+  void _showApprovalDialog(String requestId, List<String> requestedDomains) {
+      List<String> selected = List.from(requestedDomains);
+      
+      showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                title: const Text('Approve Membership'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Select domains to approve:'),
+                    const SizedBox(height: 8),
+                    ...requestedDomains.map((domain) {
+                        return CheckboxListTile(
+                          title: Text(domain.toUpperCase()),
+                          value: selected.contains(domain),
+                          onChanged: (checked) {
+                             setState(() {
+                               if (checked == true) {
+                                 selected.add(domain);
+                               } else {
+                                 selected.remove(domain);
+                               }
+                             });
+                          },
+                        );
+                    }).toList(),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                       Navigator.pop(context);
+                       _updateStatus(requestId, 'APPROVED', approvedDomains: selected);
+                    },
+                    child: const Text('Approve Selected'),
+                  ),
+                ],
+              );
+            }
+          );
+        }
+      );
   }
 
   @override
@@ -139,6 +192,25 @@ class _MembershipRequestsScreenState extends State<MembershipRequestsScreen> {
                               ),
                             ),
                             
+                            // Requested Domains
+                            if (req['domains'] != null && (req['domains'] as List).isNotEmpty) ...[
+                               const SizedBox(height: 8),
+                               Text(
+                                 'Requested Domains:', 
+                                 style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white70 : Colors.black87)
+                               ),
+                               const SizedBox(height: 4),
+                               Wrap(
+                                 spacing: 8,
+                                 children: (req['domains'] as List).map<Widget>((d) => Chip(
+                                   label: Text(d.toString().toUpperCase(), style: const TextStyle(fontSize: 10)),
+                                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                   visualDensity: VisualDensity.compact,
+                                   backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
+                                 )).toList(),
+                               ),
+                            ],
+
                             // Footer: Actions
                             if (status == 'PENDING') ...[
                               const Divider(height: 24),
@@ -155,7 +227,14 @@ class _MembershipRequestsScreenState extends State<MembershipRequestsScreen> {
                                   ),
                                   const SizedBox(width: 12),
                                   ElevatedButton.icon(
-                                    onPressed: () => _updateStatus(req['id'], 'APPROVED'),
+                                    onPressed: () {
+                                       final domains = (req['domains'] as List?)?.map((e) => e.toString()).toList() ?? [];
+                                       if (domains.isNotEmpty) {
+                                          _showApprovalDialog(req['id'], domains);
+                                       } else {
+                                          _updateStatus(req['id'], 'APPROVED');
+                                       }
+                                    },
                                     icon: const Icon(Icons.check, color: Colors.white),
                                     label: const Text('Approve', style: TextStyle(color: Colors.white)),
                                     style: ElevatedButton.styleFrom(

@@ -32,7 +32,11 @@ class MemberProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final domainColor = _getDomainColor(member.domain);
+    
+    // Use first domain for primary color context, or gray
+    final primaryDomain = (member.domains.isNotEmpty) ? member.domains.first : member.domain;
+    final domainColor = _getDomainColor(primaryDomain);
+    
     final textColor = isDark ? Colors.white : Colors.black;
     final subTextColor = isDark ? Colors.white70 : Colors.black87;
     
@@ -66,24 +70,24 @@ class MemberProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+            const SizedBox(height: 16),
             Text(
               member.username,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor),
             ),
-            if (member.domain != null)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: domainColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: domainColor.withOpacity(0.5)),
-                ),
-                child: Text(
-                  member.domain!.toUpperCase(),
-                  style: TextStyle(color: domainColor, fontWeight: FontWeight.bold, fontSize: 12),
-                ),
-              ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                 if (member.domains.isNotEmpty)
+                    for (var d in member.domains)
+                      _buildDomainBadge(d, _getDomainColor(d))
+                 else if (member.domain != null)
+                      _buildDomainBadge(member.domain!, domainColor),
+              ],
+            ),
             
             const SizedBox(height: 30),
             
@@ -175,6 +179,20 @@ class MemberProfileScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+  Widget _buildDomainBadge(String domain, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Text(
+        domain.toUpperCase(),
+        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
       ),
     );
   }

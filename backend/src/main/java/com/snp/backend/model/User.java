@@ -139,12 +139,24 @@ public class User {
         this.lastAnnouncementRead = lastAnnouncementRead;
     }
 
-    public String getDomain() {
-        return domain;
+    private java.util.List<String> domains = new java.util.ArrayList<>();
+
+    // ... (keeping other fields)
+
+    public java.util.List<String> getDomains() {
+        return domains;
     }
 
-    public void setDomain(String domain) {
-        this.domain = domain;
+    public void setDomains(java.util.List<String> domains) {
+        this.domains = domains;
+    }
+
+    // Helper to keep legacy compatibility for getDomain() if needed,
+    // or just remove it. Removing it forces compile errors where we need to update.
+    // I'll leave a helper for primary domain to minimize breakage temporarily?
+    // User requested "multiple domains", so usually getDomain() implies primary.
+    public String getDomain() {
+        return (domains != null && !domains.isEmpty()) ? domains.get(0) : null;
     }
 
     public String getDepartment() {

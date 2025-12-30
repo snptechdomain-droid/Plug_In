@@ -93,11 +93,24 @@ public class RegisterRequest {
         this.department = department;
     }
 
+    private java.util.List<String> domains;
+
+    public java.util.List<String> getDomains() {
+        return domains;
+    }
+
+    public void setDomains(java.util.List<String> domains) {
+        this.domains = domains;
+    }
+
+    // Legacy single domain support
     public String getDomain() {
-        return domain;
+        return (domains != null && !domains.isEmpty()) ? domains.get(0) : null;
     }
 
     public void setDomain(String domain) {
-        this.domain = domain;
+        if (this.domains == null)
+            this.domains = new java.util.ArrayList<>();
+        this.domains.add(domain);
     }
 }

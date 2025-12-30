@@ -36,8 +36,20 @@ public class AdminController {
         for (User u : users) {
             boolean changed = false;
 
-            if (u.getDomain() == null || u.getDomain().isEmpty() || "null".equals(u.getDomain())) {
-                u.setDomain(domains[random.nextInt(domains.length)]);
+            // Check if domains list is empty
+            if (u.getDomains() == null || u.getDomains().isEmpty()) {
+                // Determine how many domains to assign (1 or 2)
+                int numDomains = random.nextInt(2) + 1; // 1 or 2
+                java.util.List<String> newDomains = new java.util.ArrayList<>();
+
+                for (int i = 0; i < numDomains; i++) {
+                    String d = domains[random.nextInt(domains.length)];
+                    if (!newDomains.contains(d)) {
+                        newDomains.add(d);
+                    }
+                }
+
+                u.setDomains(newDomains);
                 changed = true;
             }
 

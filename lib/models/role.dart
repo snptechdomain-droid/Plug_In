@@ -175,7 +175,8 @@ class UserLoginDetails {
   final String? avatarUrl;
   
   // New Fields for Domain Features
-  final String? domain;
+  final List<String> domains; // Changed from single String to List
+  final String? domain; // Keep for legacy/primary support if needed, or derived from domains first element
   final String? department;
   final String? year;
   final String? section;
@@ -192,6 +193,7 @@ class UserLoginDetails {
     this.lastLogin,
     this.bio,
     this.avatarUrl,
+    this.domains = const [],
     this.domain,
     this.department,
     this.year,
@@ -218,6 +220,7 @@ class UserLoginDetails {
       bio: json['bio'],
       avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),
       domain: json['domain'],
+      domains: (json['domains'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
       department: json['department'],
       year: json['year'],
       section: json['section'],
@@ -238,6 +241,7 @@ class UserLoginDetails {
       'bio': bio,
       'avatarUrl': avatarUrl,
       'domain': domain,
+      'domains': domains,
       'department': department,
       'year': year,
       'section': section,

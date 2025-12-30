@@ -83,19 +83,24 @@ public class AuthController {
         user.setSection(request.getSection());
         user.setDepartment(request.getDepartment());
 
-        if (request.getDomain() != null && !request.getDomain().isEmpty()) {
-            user.setDomain(request.getDomain());
+        if (request.getDomains() != null && !request.getDomains().isEmpty()) {
+            user.setDomains(request.getDomains());
 
-            // Auto-Admin Logic: First user in a domain becomes ADMIN
-            long domainCount = userRepository.countByDomain(request.getDomain());
+            // Auto-Admin Logic:
+            // If the user registers for a domain that has NO users yet, they become ADMIN.
+            // We check the FIRST selected domain for simplicity of this rule,
+            // OR checks if any of them triggers it.
+            // Let's stick to checking the primary (first) domain for the "Founder" effect.
+            String primaryDomain = request.getDomains().get(0);
+            long domainCount = userRepository.countByDomain(primaryDomain); // Mongo query matches array contains
+
             if (domainCount == 0) {
                 user.setRole(User.Role.ADMIN);
             } else {
                 user.setRole(User.Role.MEMBER);
             }
         } else {
-            // Fallback for non-domain users (default to MEMBER, or Admin if username is
-            // 'admin')
+            // Fallback
             if ("admin".equalsIgnoreCase(request.getUsername())) {
                 user.setRole(User.Role.ADMIN);
             } else {

@@ -34,40 +34,48 @@ public class MembershipRequestController {
     }
 
     @PutMapping("/{id}/status")
-    public MembershipRequest updateStatus(@PathVariable String id, @RequestBody String status) {
-        String cleanStatus = status.replaceAll("\"", "").trim(); // Handle potential JSON quotes
+    public MembershipRequest updateStatus(@PathVariable String id, @RequestBody java.util.Map<String, Object> payload) {
+        String status = (String) payload.getOrDefault("status", "PENDING");
+        @SuppressWarnings("unchecked")
+        List<String> approvedDomains = (List<String>) payload.get("approvedDomains");
 
         return requestRepository.findById(id).map(request -> {
-            request.setStatus(cleanStatus);
+            request.setStatus(status);
 
-            if ("APPROVED".equals(cleanStatus)) {
+            if ("APPROVED".equals(status)) {
                 // Check if user already exists
                 if (userRepository.findByEmail(request.getEmail()).isEmpty()) {
                     com.snp.backend.model.User newUser = new com.snp.backend.model.User();
-                    // newUser.setUsername(request.getEmail()); // Removed: Method undefined
-                    // Generate username-based email for consistent login
-                    String generatedUsername = request.getName().trim().replaceAll("\\s+", "").toLowerCase();
-                    newUser.setEmail(generatedUsername + "@snp.com");
+
+                    // Generate username (email prefix)
+                    String generatedUsername = request.getName().trim().replaceAll("\\s+", "").toLowerCase()
+                            + randomSuffix();
+                    newUser.setEmail(request.getEmail()); // Use actual email
+                    newUser.setPasswordHash(passwordEncoder
+                            .encode(request.getRegisterNumber() != null ? request.getRegisterNumber() : "welcome123"));
                     newUser.setDisplayName(request.getName());
                     newUser.setRole(com.snp.backend.model.User.Role.MEMBER);
 
-                    // Set default password to Register Number, or "welcome123" if missing
-                    String rawPassword = (request.getRegisterNumber() != null && !request.getRegisterNumber().isEmpty())
-                            ? request.getRegisterNumber()
-                            : "welcome123";
+                    // Map Student Details Directly
+                    newUser.setRegisterNumber(request.getRegisterNumber());
+                    newUser.setDepartment(request.getDepartment());
+                    newUser.setYear(request.getYear());
+                    newUser.setSection(request.getSection());
 
-                    newUser.setPasswordHash(passwordEncoder.encode(rawPassword));
+                    // Map Domains (Use approved list if provided, otherwise requested list)
+                    if (approvedDomains != null && !approvedDomains.isEmpty()) {
+                        newUser.setDomains(approvedDomains);
+                        // Update request object to reflect what was actually approved?
+                        request.setDomains(approvedDomains);
+                    } else {
+                        newUser.setDomains(request.getDomains());
+                    }
+
                     newUser.setActive(true);
                     newUser.setCreatedAt(java.time.Instant.now());
 
-                    // Store original email and other details in bio
-                    String bio = String.format("Email: %s | %s | %s %s %s",
-                            request.getEmail(),
-                            request.getRegisterNumber() != null ? request.getRegisterNumber() : "-",
-                            request.getDepartment() != null ? request.getDepartment() : "",
-                            request.getYear() != null ? request.getYear() : "",
-                            request.getSection() != null ? request.getSection() : "");
-                    newUser.setBio(bio);
+                    // Optional bio
+                    newUser.setBio("Joined via Membership Request");
 
                     userRepository.save(newUser);
                 }
@@ -75,5 +83,9 @@ public class MembershipRequestController {
 
             return requestRepository.save(request);
         }).orElseThrow(() -> new RuntimeException("Request not found"));
+    }
+
+    private String randomSuffix() {
+        return String.valueOf((int) (Math.random() * 1000));
     }
 }

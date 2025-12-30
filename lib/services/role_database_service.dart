@@ -200,6 +200,12 @@ class RoleBasedDatabaseService {
           lastLogin: DateTime.now(),
           bio: data['bio'],
           avatarUrl: data['avatarUrl'],
+          domain: data['domain'],
+          domains: (data['domains'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [], // Map list
+          department: data['department'],
+          year: data['year'],
+          section: data['section'],
+          registerNumber: data['registerNumber'],
         );
         
         await setCurrentUser(user);
@@ -228,7 +234,8 @@ class RoleBasedDatabaseService {
     String? year,
     String? section,
     String? department,
-    String? domain,
+    String? department,
+    List<String>? domains, // Changed from single String to List
   }) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/auth/register');
@@ -244,7 +251,7 @@ class RoleBasedDatabaseService {
           'year': year,
           'section': section,
           'department': department,
-          'domain': domain,
+          'domains': domains, // Send list
         }),
       );
 
@@ -298,6 +305,12 @@ class RoleBasedDatabaseService {
               isActive: true,
               bio: json['bio'],
               avatarUrl: json['avatarUrl'],
+              domain: json['domain'],
+              domains: (json['domains'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+              department: json['department'],
+              year: json['year'],
+              section: json['section'],
+              registerNumber: json['registerNumber'],
             );
         }).toList();
         return backendUsers;
@@ -479,6 +492,12 @@ class RoleBasedDatabaseService {
           lastLogin: DateTime.now(), 
           bio: json['bio'],
           avatarUrl: (json['avatarUrl'] as String?)?.replaceAll('/svg', '/png'),
+          domain: json['domain'],
+          domains: (json['domains'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+          department: json['department'],
+          year: json['year'],
+          section: json['section'],
+          registerNumber: json['registerNumber'],
         )).toList();
       } else {
         print('Failed to fetch users: ${response.body}');
@@ -983,13 +1002,18 @@ class RoleBasedDatabaseService {
     return [];
   }
 
-  Future<bool> updateMembershipRequestStatus(String requestId, String status) async {
+  Future<bool> updateMembershipRequestStatus(String requestId, String status, {List<String>? approvedDomains}) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/membership/$requestId/status');
+      final body = {
+        'status': status,
+        if (approvedDomains != null) 'approvedDomains': approvedDomains,
+      };
+
       final response = await http.put(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: status, // Sending raw string body as controller expects @RequestBody String
+        body: jsonEncode(body), 
       );
       return response.statusCode == 200;
     } catch (e) {

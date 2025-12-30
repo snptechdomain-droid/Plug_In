@@ -21,6 +21,7 @@ class _MembersScreenState extends State<MembersScreen> {
   final _roleDatabase = RoleBasedDatabaseService();
   List<UserLoginDetails> _members = [];
   List<Map<String, dynamic>> _attendanceRecords = [];
+  Map<String, double> _attendanceMap = {}; // Cache for O(1) Access
   bool _isLoading = true;
 
   UserLoginDetails? _currentUser;
@@ -47,10 +48,46 @@ class _MembersScreenState extends State<MembersScreen> {
       final members = await _roleDatabase.fetchAllUsers();
       final attendance = await _roleDatabase.fetchAttendanceRecords();
       
+      // OPTIMIZATION: Pre-calculate attendance here
+      final Map<String, double> calculatedMap = {};
+      
+      // Parse attendance ONCE
+      final parsedRecords = attendance.where((r) => r['date'] != null).map((record) {
+          return {
+            'date': RoleBasedDatabaseService.parseDate(record['date']).toUtc(),
+            'presentById': Set<String>.from(record['presentUserIds'] ?? []),
+             // Fallback support if needed (username/email in list) but usually IDs are best
+          };
+      }).toList();
+
+      for (var member in members) {
+          final joinDate = member.createdAt.toUtc();
+          int totalApplicable = 0;
+          int presentCount = 0;
+
+          for (var record in parsedRecords) {
+              final recordDate = record['date'] as DateTime;
+              if (recordDate.isAfter(joinDate)) {
+                  totalApplicable++;
+                  final presentSet = record['presentById'] as Set<String>;
+                  if (presentSet.contains(member.id) || 
+                      presentSet.contains(member.username) || 
+                      presentSet.contains(member.email)) {
+                      presentCount++;
+                  }
+              }
+          }
+          
+          calculatedMap[member.username] = (totalApplicable == 0) 
+              ? 0.0 
+              : (presentCount / totalApplicable) * 100.0;
+      }
+      
       if (mounted) {
         setState(() {
           _members = members;
           _attendanceRecords = attendance;
+          _attendanceMap = calculatedMap;
           _isLoading = false;
         });
       }
@@ -142,7 +179,7 @@ class _MembersScreenState extends State<MembersScreen> {
                             itemCount: _members.length,
                             itemBuilder: (context, index) {
                               final member = _members[index];
-                              final attendancePercentage = _calculateAttendance(member);
+                              final attendancePercentage = _attendanceMap[member.username] ?? 0.0;
 
                               return AnimationConfiguration.staggeredList(
                                 position: index,
@@ -155,7 +192,7 @@ class _MembersScreenState extends State<MembersScreen> {
                                       role: member.role.displayName,
                                       attendance: attendancePercentage,
                                       avatarUrl: member.avatarUrl,
-                                      domain: member.domain, // Pass domain
+                                      domains: member.domains, // Pass list
                                       isDark: isDark,
                                       onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
                                           ? () => _showRoleDialog(member)
@@ -375,8 +412,9 @@ class MemberCard extends StatelessWidget {
   final String name;
   final String role;
   final double attendance;
-  final String? avatarUrl; // Added missing field
-  final String? domain; // Added
+  final String? avatarUrl; 
+  final String? domain; // Legacy
+  final List<String> domains; // Added
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
@@ -388,7 +426,8 @@ class MemberCard extends StatelessWidget {
     required this.role,
     required this.attendance,
     this.avatarUrl,
-    this.domain, // Added
+    this.domain, 
+    this.domains = const [], // Added
     this.onEdit,
     this.onDelete,
     this.onTap,
@@ -449,18 +488,38 @@ class MemberCard extends StatelessWidget {
         contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         title: Row(
           children: [
-             if (domain != null) ...[
-              Container(
+             if (domains.isNotEmpty) ...[
+               for (var domainStr in domains.take(2)) ...[
+                  Container(
+                    margin: const EdgeInsets.only(right: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getDomainColor(domainStr).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _getDomainColor(domainStr).withOpacity(0.5), width: 0.5),
+                    ),
+                    child: Text(
+                      domainStr.toUpperCase(),
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _getDomainColor(domainStr)),
+                    ),
+                  ),
+               ],
+               if (domains.length > 2)
+                 Text('+${domains.length - 2}', style: TextStyle(fontSize: 10, color: isDark ? Colors.grey : Colors.grey[600])),
+            ],
+            // Legacy/Fallback for null list but present single domain (transition phase)
+            if (domains.isEmpty && domain != null) ...[ 
+               Container(
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: domainColor.withOpacity(0.2),
+                  color: _getDomainColor(domain).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: domainColor.withOpacity(0.5), width: 0.5),
+                  border: Border.all(color: _getDomainColor(domain).withOpacity(0.5), width: 0.5),
                 ),
                 child: Text(
                   domain!.toUpperCase(),
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: domainColor),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _getDomainColor(domain)),
                 ),
               ),
             ],

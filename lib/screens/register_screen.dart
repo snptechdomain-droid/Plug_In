@@ -20,15 +20,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String _year = 'I';
   String _section = '';
   String _department = 'CSE';
-  String _domain = 'management'; // Default
+  String _department = 'CSE';
+  List<String> _selectedDomains = []; // Multi-select list
 
   final _auth = RoleBasedDatabaseService();
+
+  void _showDomainDialog() async {
+    final domains = ['management', 'tech', 'webdev', 'content', 'design', 'marketing'];
+    
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Select Domains'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: domains.map((domain) {
+                    final isSelected = _selectedDomains.contains(domain);
+                    return CheckboxListTile(
+                      title: Text(domain.toUpperCase()),
+                      value: isSelected,
+                      onChanged: (checked) {
+                        setState(() {
+                          if (checked == true) {
+                            if (!_selectedDomains.contains(domain)) {
+                              _selectedDomains.add(domain);
+                            }
+                          } else {
+                            _selectedDomains.remove(domain);
+                          }
+                        });
+                        // Update parent state as well to reflect in background immediately or after close
+                        this.setState(() {}); 
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
 
   Future<void> _register() async {
     if (_username.isEmpty || _password.isEmpty || _key.isEmpty) {
       setState(() { _error = 'Please fill all required fields'; });
       return;
     }
+    
+    // User requested "allow selectinmg multiple domis... add option to only accept for selected domains"
+    // The "accept for selected" is Admin side. Here we just let them request/add.
 
     setState(() { _isLoading = true; _error = null; });
     
@@ -40,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       year: _year,
       section: _section,
       department: _department,
-      domain: _domain,
+      domains: _selectedDomains, // Send list
     );
 
     if (!mounted) return;
@@ -128,12 +180,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onChanged: (v) => _section = v,
                     ),
                     const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _domain,
-                      decoration: const InputDecoration(labelText: 'Domain', prefixIcon: Icon(Icons.work)),
-                      items: ['management', 'tech', 'webdev', 'content', 'design', 'marketing']
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e.toUpperCase()))).toList(),
-                      onChanged: (v) => setState(() => _domain = v!),
+                    // Multi-Select Domain Field
+                    InkWell(
+                      onTap: _showDomainDialog,
+                      child: InputDecorator(
+                        decoration: const InputDecoration(
+                          labelText: 'Domains', 
+                          prefixIcon: Icon(Icons.work),
+                          border: OutlineInputBorder(),
+                        ),
+                        child: Text(
+                          _selectedDomains.isEmpty 
+                              ? 'Select Domains' 
+                              : _selectedDomains.map((e) => e.toUpperCase()).join(', '),
+                          style: TextStyle(
+                            color: _selectedDomains.isEmpty ? Colors.grey.shade600 : Theme.of(context).textTheme.bodyLarge?.color
+                          ),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 24),
