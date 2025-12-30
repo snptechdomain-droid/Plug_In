@@ -181,7 +181,9 @@ class UserLoginDetails {
   final String? year;
   final String? section;
   final String? registerNumber;
+  final String? registerNumber;
   final String? mobileNumber;
+  final String? leadOfDomain;
 
   UserLoginDetails({
     this.id = '', 
@@ -228,6 +230,7 @@ class UserLoginDetails {
       section: json['section'],
       registerNumber: json['registerNumber'],
       mobileNumber: json['mobileNumber'],
+      leadOfDomain: json['leadOfDomain'],
     );
   }
 
@@ -250,6 +253,7 @@ class UserLoginDetails {
       'section': section,
       'registerNumber': registerNumber,
       'mobileNumber': mobileNumber,
+      'leadOfDomain': leadOfDomain,
     };
   }
 
@@ -270,6 +274,7 @@ class UserLoginDetails {
     String? section,
     String? registerNumber,
     String? mobileNumber,
+    String? leadOfDomain,
   }) {
     return UserLoginDetails(
       id: id ?? this.id,
@@ -288,6 +293,7 @@ class UserLoginDetails {
       section: section ?? this.section,
       registerNumber: registerNumber ?? this.registerNumber,
       mobileNumber: mobileNumber ?? this.mobileNumber,
+      leadOfDomain: leadOfDomain ?? this.leadOfDomain,
     );
   }
 }

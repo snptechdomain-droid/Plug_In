@@ -206,7 +206,9 @@ class RoleBasedDatabaseService {
           year: data['year'],
           section: data['section'],
           registerNumber: data['registerNumber'],
+          registerNumber: data['registerNumber'],
           mobileNumber: data['mobileNumber'],
+          leadOfDomain: data['leadOfDomain'],
         );
         
         await setCurrentUser(user);
@@ -512,6 +514,7 @@ class RoleBasedDatabaseService {
           section: json['section'],
           registerNumber: json['registerNumber'],
           mobileNumber: json['mobileNumber'],
+          leadOfDomain: json['leadOfDomain'],
         )).toList();
       } else {
         print('Failed to fetch users: ${response.body}');
@@ -525,7 +528,7 @@ class RoleBasedDatabaseService {
 
   /// Update user profile via Backend API
   Future<bool> updateUserProfile(String username, String displayName, String bio, String? avatarUrl, 
-      {String? department, String? year, String? section, String? registerNumber, String? mobileNumber, String? newEmail}) async {
+      {String? department, String? year, String? section, String? registerNumber, String? mobileNumber, String? newEmail, List<String>? domains, String? leadOfDomain}) async {
     try {
       final url = Uri.parse('${_getBaseUrl()}/api/users/$username');
       final body = {
@@ -536,6 +539,8 @@ class RoleBasedDatabaseService {
         'section': section,
         'registerNumber': registerNumber,
         'mobileNumber': mobileNumber,
+        'domains': domains,
+        'leadOfDomain': leadOfDomain,
       };
       if (newEmail != null && newEmail.isNotEmpty) {
         body['email'] = newEmail;
@@ -564,6 +569,8 @@ class RoleBasedDatabaseService {
             registerNumber: registerNumber,
             mobileNumber: mobileNumber,
             email: newEmail,
+            domains: domains,
+            leadOfDomain: leadOfDomain,
           );
           await setCurrentUser(updatedUser);
         }

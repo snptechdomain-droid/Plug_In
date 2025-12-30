@@ -82,6 +82,22 @@ class MemberProfileScreen extends StatelessWidget {
               member.username,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: textColor),
             ),
+            if (member.leadOfDomain != null && member.leadOfDomain!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.amber),
+                  ),
+                  child: Text(
+                    '${member.leadOfDomain} Lead',
+                    style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -204,12 +220,11 @@ class MemberProfileScreen extends StatelessWidget {
       ),
     );
   }
-  bool get _isCurrentUser => member.email == RoleBasedDatabaseService().currentUser?.email; // Need to access current user nicely. 
-  // Actually MemberProfileScreen is stateless, so we assume the parent passed correct data or we check simplistic equality if we had current user passed.
-  // For now, let's just add the edit button and let logic decide.
-  // Wait, MemberProfileScreen is often pushed.
+  
+  void _showEditProfileDialog(BuildContext context) async {
+    final currentUser = await RoleBasedDatabaseService().getCurrentUser();
+    final isAdmin = currentUser?.role == UserRole.admin;
 
-  void _showEditProfileDialog(BuildContext context) {
     final nameCtrl = TextEditingController(text: member.username); // username is display name
     final bioCtrl = TextEditingController(text: member.bio ?? '');
     final deptCtrl = TextEditingController(text: member.department ?? '');
@@ -217,8 +232,15 @@ class MemberProfileScreen extends StatelessWidget {
     final secCtrl = TextEditingController(text: member.section ?? '');
     final regCtrl = TextEditingController(text: member.registerNumber ?? '');
     final mobileCtrl = TextEditingController(text: member.mobileNumber ?? '');
-    final emailCtrl = TextEditingController(text: member.email); // Email controller
+    final emailCtrl = TextEditingController(text: member.email);
     
+    // Domain & Lead State
+    List<String> selectedDomains = List.from(member.domains);
+    String? selectedLeadDomain = member.leadOfDomain;
+
+    // Available domains
+    final allDomains = Domain.values.map((d) => d.name).toList();
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -233,7 +255,7 @@ class MemberProfileScreen extends StatelessWidget {
                  mainAxisSize: MainAxisSize.min,
                  children: [
                     TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Display Name')),
-                    TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address')), // Email Field
+                    TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email Address')),
                     TextField(controller: bioCtrl, decoration: const InputDecoration(labelText: 'Bio')),
                     const Divider(),
                     TextField(controller: regCtrl, decoration: const InputDecoration(labelText: 'Register Number')),
@@ -246,7 +268,51 @@ class MemberProfileScreen extends StatelessWidget {
                         Expanded(child: TextField(controller: secCtrl, decoration: const InputDecoration(labelText: 'Sec'))),
                     ]),
                     const SizedBox(height: 10),
-                    const Text('Role and Domain cannot be changed here.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    
+                    if (isAdmin) ...[
+                      const Divider(),
+                      const Text('Admin Controls', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      // Multi-select Domains
+                      ExpansionTile(
+                        title: const Text('Domains'),
+                        subtitle: Text(selectedDomains.join(', ')),
+                        children: allDomains.map((domainStr) {
+                          return CheckboxListTile(
+                            title: Text(domainStr.toUpperCase()),
+                            value: selectedDomains.contains(domainStr),
+                            onChanged: (val) {
+                              setState(() {
+                                if (val == true) {
+                                  selectedDomains.add(domainStr);
+                                } else {
+                                  selectedDomains.remove(domainStr);
+                                  // If removed domain was the lead domain, clear lead
+                                  if (selectedLeadDomain == domainStr) {
+                                    selectedLeadDomain = null;
+                                  }
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 8),
+                      // Lead Selection
+                      DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(labelText: 'Lead of Domain'),
+                        value: selectedDomains.contains(selectedLeadDomain) ? selectedLeadDomain : null,
+                        items: [
+                          const DropdownMenuItem<String>(value: null, child: Text('None')),
+                          ...selectedDomains.map((d) => DropdownMenuItem(
+                            value: d, 
+                            child: Text(d.toUpperCase()),
+                          ))
+                        ],
+                        onChanged: (val) => setState(() => selectedLeadDomain = val),
+                      ),
+                    ] else 
+                      const Text('Role and Domain cannot be changed here.', style: TextStyle(color: Colors.grey, fontSize: 12)),
                  ],
                ),
              ),
@@ -265,17 +331,17 @@ class MemberProfileScreen extends StatelessWidget {
                       section: secCtrl.text,
                       registerNumber: regCtrl.text,
                       mobileNumber: mobileCtrl.text,
-                      newEmail: emailCtrl.text.trim() != member.email ? emailCtrl.text.trim() : null, // Pass new email if changed
+                      newEmail: emailCtrl.text.trim() != member.email ? emailCtrl.text.trim() : null,
+                      domains: isAdmin ? selectedDomains : null,
+                      leadOfDomain: isAdmin ? (selectedLeadDomain ?? '') : null, // Empty string to clear
                     );
                     
                     if (context.mounted) {
                       Navigator.pop(context);
                       if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile Updated!')));
-                        // Trigger rebuild? Stateless widget won't rebuild. 
-                        // ideally we should pop the screen or use a state management solution.
-                        // For now simply pop the screen to return to previous, or replacing logic.
-                        // Or just let user know.
+                      } else {
+                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to update. Check conflicts.')));
                       }
                     }
                  },

@@ -21,7 +21,7 @@ class _MembersScreenState extends State<MembersScreen> {
   final _roleDatabase = RoleBasedDatabaseService();
   List<UserLoginDetails> _members = [];
   List<Map<String, dynamic>> _attendanceRecords = [];
-  Map<String, double> _attendanceMap = {}; // Cache for O(1) Access
+  Map<String, double> _attendanceMap = {}; 
   bool _isLoading = true;
 
   UserLoginDetails? _currentUser;
@@ -128,36 +128,7 @@ class _MembersScreenState extends State<MembersScreen> {
         backgroundColor: Colors.transparent,
         iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
         actions: [
-          // Admin Backfill Button
-          if (_currentUser?.role == UserRole.admin)
-             IconButton(
-               icon: Icon(Icons.auto_fix_high, color: isDark ? Colors.purpleAccent : Colors.purple),
-               tooltip: 'Backfill Random Domains',
-               onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (c) => AlertDialog(
-                      title: const Text('Backfill Data?'),
-                      content: const Text('This will assign random domains to users who have none.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                        TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Proceed')),
-                      ],
-                    ),
-                  );
-                  if (confirm == true) {
-                     setState(() => _isLoading = true);
-                     final success = await _roleDatabase.triggerDomainBackfill();
-                     if (success) _loadData(); // Reload
-                     if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(success ? 'Backfill complete!' : 'Backfill failed'),
-                        ));
-                        if (!success) setState(() => _isLoading = false);
-                     }
-                  }
-               },
-             ),
+
 
           IconButton(
             icon: Icon(Icons.refresh, color: isDark ? Colors.yellow : Colors.blue), // Yellow/Blue refresh

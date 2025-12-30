@@ -8,9 +8,12 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.Instant;
 
 @Document(collection = "users")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
     @Id
     private String id;
@@ -31,6 +34,7 @@ public class User {
     private String section;
     private String registerNumber;
     private String mobileNumber;
+    private String leadOfDomain; // Domain this user is a lead of (Null if none)
 
     private Role role;
 
@@ -198,5 +202,13 @@ public class User {
 
     public void setMobileNumber(String mobileNumber) {
         this.mobileNumber = mobileNumber;
+    }
+
+    public String getLeadOfDomain() {
+        return leadOfDomain;
+    }
+
+    public void setLeadOfDomain(String leadOfDomain) {
+        this.leadOfDomain = leadOfDomain;
     }
 }
