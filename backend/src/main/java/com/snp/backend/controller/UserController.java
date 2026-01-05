@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -24,8 +25,6 @@ public class UserController {
         users.forEach(u -> u.setPasswordHash(null));
         return users;
     }
-
-import java.util.stream.Collectors;
 
     @PutMapping("/{username}")
     public User updateUserProfile(@PathVariable String username, @RequestBody User updatedUser) {
@@ -59,7 +58,7 @@ import java.util.stream.Collectors;
         if (updatedUser.getEmail() != null && !updatedUser.getEmail().equals(user.getEmail())) {
             // Check if new email is taken
             if (userRepository.findByEmail(updatedUser.getEmail()).isPresent()) {
-                 throw new RuntimeException("Email already in use");
+                throw new RuntimeException("Email already in use");
             }
             user.setEmail(updatedUser.getEmail());
             // Note: If email is used as login username, this changes login credential.
@@ -73,23 +72,25 @@ import java.util.stream.Collectors;
         // Lead of Domain update with strict validation
         if (updatedUser.getLeadOfDomain() != null) {
             String newLeadDomain = updatedUser.getLeadOfDomain();
-            
+
             // Allow clearing lead status by sending empty string
             if (!newLeadDomain.isEmpty()) {
                 // 2. Check if THIS domain already has a lead
                 try {
                     List<User> existingLeads = userRepository.findAll().stream()
-                            .filter(u -> u.getLeadOfDomain() != null && newLeadDomain.equals(u.getLeadOfDomain()) && !u.getId().equals(user.getId()))
+                            .filter(u -> u.getLeadOfDomain() != null && newLeadDomain.equals(u.getLeadOfDomain())
+                                    && !u.getId().equals(user.getId()))
                             .collect(Collectors.toList());
-                    
+
                     if (!existingLeads.isEmpty()) {
-                        System.out.println("Conflict: Domain " + newLeadDomain + " already led by " + existingLeads.get(0).getEmail());
+                        System.out.println("Conflict: Domain " + newLeadDomain + " already led by "
+                                + existingLeads.get(0).getEmail());
                         throw new RuntimeException("Domain " + newLeadDomain + " already has a lead.");
                     }
                 } catch (Exception e) {
-                   System.out.println("Error verifying lead status: " + e.getMessage());
-                   e.printStackTrace();
-                   throw new RuntimeException("Error verifying lead status: " + e.getMessage());
+                    System.out.println("Error verifying lead status: " + e.getMessage());
+                    e.printStackTrace();
+                    throw new RuntimeException("Error verifying lead status: " + e.getMessage());
                 }
             }
             user.setLeadOfDomain(newLeadDomain);
