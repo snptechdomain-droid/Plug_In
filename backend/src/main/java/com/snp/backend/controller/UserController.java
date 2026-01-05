@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -77,10 +76,10 @@ public class UserController {
             if (!newLeadDomain.isEmpty()) {
                 // 2. Check if THIS domain already has a lead
                 try {
-                    List<User> existingLeads = userRepository.findAll().stream()
-                            .filter(u -> u.getLeadOfDomain() != null && newLeadDomain.equals(u.getLeadOfDomain())
-                                    && !u.getId().equals(user.getId()))
-                            .collect(Collectors.toList());
+                    List<User> existingLeads = userRepository.findByLeadOfDomain(newLeadDomain);
+
+                    // Filter out current user if they are already the lead (updating self)
+                    existingLeads.removeIf(u -> u.getId().equals(user.getId()));
 
                     if (!existingLeads.isEmpty()) {
                         System.out.println("Conflict: Domain " + newLeadDomain + " already led by "
@@ -90,6 +89,9 @@ public class UserController {
                 } catch (Exception e) {
                     System.out.println("Error verifying lead status: " + e.getMessage());
                     e.printStackTrace();
+                    if (e instanceof RuntimeException) {
+                        throw (RuntimeException) e;
+                    }
                     throw new RuntimeException("Error verifying lead status: " + e.getMessage());
                 }
             }

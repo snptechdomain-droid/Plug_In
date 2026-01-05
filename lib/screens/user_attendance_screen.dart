@@ -190,8 +190,8 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
                                 color: isPresent ? Colors.greenAccent : Colors.redAccent,
                                 size: 30,
                               ),
-                              title: Text(
-                                DateFormat('MMM dd, yyyy - hh:mm a').format(date.toLocal()),
+                                title: Text(
+                                DateFormat('dd/MM/yyyy - hh:mm a').format(date.toLocal()),
                                 style: TextStyle(
                                   color: isDark ? Colors.white : Colors.black87, 
                                   fontWeight: FontWeight.bold

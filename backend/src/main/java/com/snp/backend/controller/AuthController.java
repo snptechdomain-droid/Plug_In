@@ -47,6 +47,11 @@ public class AuthController {
             userOpt = userRepository.findByEmail(request.getUsername() + "@snp.com");
         }
 
+        // 3. If still not found, try finding by Display Name
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByDisplayName(request.getUsername());
+        }
+
         // 3. Fake delay for timing attack mitigation (optional, keeping simple for now)
 
         if (userOpt.isPresent()) {

@@ -13,4 +13,6 @@ public interface UserRepository extends MongoRepository<User, String> {
     Optional<User> findByDisplayName(String displayName);
 
     long countByDomain(String domain);
+
+    java.util.List<User> findByLeadOfDomain(String leadOfDomain);
 }
