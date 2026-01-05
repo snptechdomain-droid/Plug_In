@@ -39,17 +39,18 @@ public class AuthController {
                     .body("Too many login attempts. Please try again later.");
         }
 
-        // 1. Try finding by email (as provided)
-        Optional<User> userOpt = userRepository.findByEmail(request.getUsername());
+        // 1. Try finding by email (as provided) - Case Insensitive
+        Optional<User> userOpt = userRepository.findByEmailIgnoreCase(request.getUsername());
 
-        // 2. If not found, try finding by constructed email (username + @snp.com)
+        // 2. If not found, try finding by constructed email (username + @snp.com) -
+        // Case Insensitive
         if (userOpt.isEmpty()) {
-            userOpt = userRepository.findByEmail(request.getUsername() + "@snp.com");
+            userOpt = userRepository.findByEmailIgnoreCase(request.getUsername() + "@snp.com");
         }
 
-        // 3. If still not found, try finding by Display Name
+        // 3. If still not found, try finding by Display Name - Case Insensitive
         if (userOpt.isEmpty()) {
-            userOpt = userRepository.findByDisplayName(request.getUsername());
+            userOpt = userRepository.findByDisplayNameIgnoreCase(request.getUsername());
         }
 
         // 3. Fake delay for timing attack mitigation (optional, keeping simple for now)
