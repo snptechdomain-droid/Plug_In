@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:app/models/announcement.dart';
 import 'package:app/models/event.dart';
-import 'package:app/screens/announcements_screen.dart' as announcements_data;
-import 'package:app/screens/events_screen.dart' as events_data;
-import 'package:intl/intl.dart';
-import 'package:app/services/role_database_service.dart';
 import 'package:app/screens/event_details_screen.dart';
-
+import 'package:app/services/role_database_service.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:app/utils/pattern_generator.dart' as app_utils;
-// Fix prefix overlap if any, or just import normally
-import 'package:app/utils/pattern_generator.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+// ignore: unused_import
+import 'package:app/widgets/glass_container.dart'; 
+import 'dart:ui';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});
@@ -20,11 +19,14 @@ class GuestScreen extends StatefulWidget {
   State<GuestScreen> createState() => _GuestScreenState();
 }
 
-class _GuestScreenState extends State<GuestScreen> {
+class _GuestScreenState extends State<GuestScreen> with TickerProviderStateMixin {
   final RoleBasedDatabaseService _databaseService = RoleBasedDatabaseService();
   List<Event> _events = [];
   bool _isLoadingEvents = true;
   
+  // Animation Controllers
+  late AnimationController _bgController;
+
   // Form controllers
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -34,61 +36,51 @@ class _GuestScreenState extends State<GuestScreen> {
   final _registerNumberController = TextEditingController();
   final _mobileNumberController = TextEditingController();
   final _reasonController = TextEditingController();
-  List<String> _selectedDomains = []; // Multi-select list
+  List<String> _selectedDomains = []; 
   bool _isSubmitting = false;
 
-  void _showDomainDialog() async {
-    final domains = ['management', 'tech', 'webdev', 'content', 'design', 'marketing'];
-    
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: const Text('Select Domains'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: domains.map((domain) {
-                    final isSelected = _selectedDomains.contains(domain);
-                    return CheckboxListTile(
-                      title: Text(domain.toUpperCase()),
-                      value: isSelected,
-                      onChanged: (checked) {
-                        setState(() {
-                          if (checked == true) {
-                            if (!_selectedDomains.contains(domain)) {
-                              _selectedDomains.add(domain);
-                            }
-                          } else {
-                            _selectedDomains.remove(domain);
-                          }
-                        });
-                        // Update parent state as well to reflect in background immediately or after close
-                        this.setState(() {}); 
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Done'),
-                ),
-              ],
-            );
-          }
-        );
-      },
-    );
-  }
+  // Randomness
+  late Color _randomPrimary;
+  late Color _randomSecondary;
+  late String _randomQuote;
+
+  final List<String> _quotes = [
+    "Software is eating the world.",
+    "Talk is cheap. Show me the code.",
+    "Stay hungry, stay foolish.",
+    "It’s not a bug, it’s a feature.",
+    "Code is poetry.",
+    "Simplicity is the soul of efficiency.",
+    "Make it work, make it right, make it fast.",
+    "First, solve the problem. Then, write the code.",
+    "Of it works it works, doesn't matter how it works.",
+    "See you on the other side"
+  ];
 
   @override
   void initState() {
     super.initState();
+    _generateRandomTheme();
+    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true);
     _loadPublicEvents();
+  }
+
+  @override
+  void dispose() {
+    _bgController.dispose();
+    super.dispose();
+  }
+
+  void _generateRandomTheme() {
+    final random = Random();
+    final colors = [
+      Colors.blueAccent, Colors.purpleAccent, Colors.orangeAccent, 
+      Colors.greenAccent, Colors.pinkAccent, Colors.cyanAccent,
+      Colors.tealAccent, Colors.indigoAccent
+    ];
+    _randomPrimary = colors[random.nextInt(colors.length)];
+    _randomSecondary = colors[random.nextInt(colors.length)];
+    _randomQuote = _quotes[random.nextInt(_quotes.length)];
   }
 
   Future<void> _loadPublicEvents() async {
@@ -100,275 +92,257 @@ class _GuestScreenState extends State<GuestScreen> {
       });
     }
   }
-
-  Future<void> _submitApplication() async {
-    if (_nameController.text.isEmpty || 
-        _emailController.text.isEmpty ||
-        _departmentController.text.isEmpty ||
-        _registerNumberController.text.isEmpty ||
-        _mobileNumberController.text.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all required fields')));
-       return;
+  
+  void _showDomainDialog() async {
+      final domains = ['management', 'tech', 'webdev', 'content', 'design', 'marketing'];
+      await showDialog(
+        context: context,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              return AlertDialog(
+                backgroundColor: Colors.grey[900], // Dark theme default for contrast
+                title: const Text('Select Domains', style: TextStyle(color: Colors.white)),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: domains.map((domain) {
+                      final isSelected = _selectedDomains.contains(domain);
+                      return CheckboxListTile(
+                        title: Text(domain.toUpperCase(), style: const TextStyle(color: Colors.white70)),
+                        value: isSelected,
+                        activeColor: _randomPrimary,
+                        checkColor: Colors.black,
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              if (!_selectedDomains.contains(domain)) _selectedDomains.add(domain);
+                            } else {
+                              _selectedDomains.remove(domain);
+                            }
+                          });
+                          this.setState(() {}); 
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Done', style: TextStyle(color: _randomPrimary)),
+                  ),
+                ],
+              );
+            }
+          );
+        },
+      );
     }
 
+  Future<void> _submitApplication() async {
+    if (_nameController.text.isEmpty || _emailController.text.isEmpty) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all basic details!')));
+       return;
+    }
     setState(() => _isSubmitting = true);
-
     final success = await _databaseService.submitMembershipRequest({
-      'name': _nameController.text,
-      'email': _emailController.text,
-      'department': _departmentController.text,
-      'year': _yearController.text,
-      'section': _sectionController.text,
-      'registerNumber': _registerNumberController.text,
-      'mobileNumber': _mobileNumberController.text,
-      'reason': _reasonController.text,
+      'name': _nameController.text, 'email': _emailController.text,
+      'department': _departmentController.text, 'year': _yearController.text,
+      'section': _sectionController.text, 'registerNumber': _registerNumberController.text,
+      'mobileNumber': _mobileNumberController.text, 'reason': _reasonController.text,
       'domains': _selectedDomains,
     });
-
     if (mounted) {
       setState(() => _isSubmitting = false);
       if (success) {
-        _nameController.clear();
-        _emailController.clear();
-        _departmentController.clear();
-        _yearController.clear();
-        _sectionController.clear();
-        _registerNumberController.clear();
-        _mobileNumberController.clear();
-        _reasonController.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Application sent successfully!'), backgroundColor: Colors.green),
-        );
+        _nameController.clear(); _emailController.clear(); _reasonController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Welcome to the club! Request Sent 🚀'), backgroundColor: _randomPrimary));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send application. Try again.'), backgroundColor: Colors.red),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed. Try again.'), backgroundColor: Colors.red));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final headerPattern = _events.isNotEmpty 
-        ? 'seed${_events.first.title}' // Dynamic based on content
-        : 'guest_dashboard_seed';
-
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200.0,
-            floating: false,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text('Slug N Plug'),
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  // Use a fixed seed for dashboard or random
-                   SvgPicture.string(
-                     PatternGenerator.generateRandomSvgPattern(headerPattern),
-                     fit: BoxFit.cover,
-                   ),
-                   Container(
-                     decoration: BoxDecoration(
-                       gradient: LinearGradient(
-                         begin: Alignment.topCenter,
-                         end: Alignment.bottomCenter,
-                         colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
-                       ),
-                     ),
-                   ),
-                ],
-              ),
-            ),
+      backgroundColor: Colors.black, // Dark Base
+      body: Stack(
+        children: [
+          // 1. Dynamic Animated Background
+          _buildAnimatedBackground(),
+          
+          // 2. Glass Overlay
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(color: Colors.black.withOpacity(0.3)),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // About Us Card (Glassy)
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                            Icon(Icons.info_outline, color: theme.colorScheme.primary), 
-                            const SizedBox(width: 8),
-                            Text('About Us', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold))
-                        ]),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Slug N Plug is a club for students interested in technology and software development. We organize events, workshops, and projects to help our members learn and grow.',
-                          style: TextStyle(height: 1.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
 
-                  // Events Header
-                  Text('Upcoming Events', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  
-                  // Events List (Horizontal)
-                  SizedBox(
-                    height: 220,
-                    child: _isLoadingEvents
-                        ? const Center(child: CircularProgressIndicator())
-                        : _events.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.event_busy, size: 48, color: Colors.grey.withOpacity(0.5)),
-                                    const SizedBox(height: 8),
-                                    const Text('No upcoming public events.'),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: _events.length,
-                                itemBuilder: (context, index) {
-                                  final event = _events[index];
-                                  return GestureDetector(
-                                    onTap: () {
-                                       Navigator.of(context).push(
-                                         MaterialPageRoute(builder: (_) => EventDetailsScreen(event: event))
-                                       );
-                                    },
-                                    child: EventCard(event: event),
-                                  );
-                                },
-                              ),
-                  ),
-                  const SizedBox(height: 32),
-
-                   // Membership Form (Collapsible/Glassy)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
-                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                      ],
+          // 3. Scrollable Content
+          SafeArea(
+            child: AnimationLimiter(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: AnimationConfiguration.toStaggeredList(
+                    duration: const Duration(milliseconds: 600),
+                    childAnimationBuilder: (widget) => SlideAnimation(
+                      verticalOffset: 50.0,
+                      child: FadeInAnimation(child: widget),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Become a Member', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                         const Text('Join our community to access exclusive events and projects.'),
-                        const SizedBox(height: 24),
-
-                         // Fields
-                        _buildGlassTextField(_nameController, 'Full Name', Icons.person),
-                        const SizedBox(height: 16),
-                        _buildGlassTextField(_emailController, 'Email Address', Icons.email),
-                        const SizedBox(height: 16),
-                        Row(children: [
-                           Expanded(child: _buildGlassTextField(_registerNumberController, 'Register No', Icons.numbers)),
-                           const SizedBox(width: 12),
-                           Expanded(child: _buildGlassTextField(_mobileNumberController, 'Mobile', Icons.phone)),
-                        ]),
-                        const SizedBox(height: 16),
-                        _buildGlassTextField(_departmentController, 'Department', Icons.school),
-                        const SizedBox(height: 16),
-                        Row(children: [
-                           Expanded(child: _buildGlassTextField(_yearController, 'Year', Icons.calendar_today)),
-                           const SizedBox(width: 12),
-                           Expanded(child: _buildGlassTextField(_sectionController, 'Section', Icons.class_)),
-                        ]),
-                        const SizedBox(height: 16),
-                        
-                        // Multi-Select Domain Field
-                        InkWell(
-                          onTap: _showDomainDialog,
-                          child: Container(
-                            constraints: const BoxConstraints(minHeight: 60),
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.work, size: 24, color: Theme.of(context).primaryColor),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      if (_selectedDomains.isNotEmpty)
-                                        Text('Domains', style: TextStyle(fontSize: 12, color: Theme.of(context).primaryColor)),
-                                      Text(
-                                        _selectedDomains.isEmpty 
-                                            ? 'Select Domains' 
-                                            : _selectedDomains.map((e) => e.toUpperCase()).join(', '),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: _selectedDomains.isEmpty ? Colors.grey[700] : (theme.brightness == Brightness.dark ? Colors.white : Colors.black),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.arrow_drop_down),
-                              ],
-                            ),
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Slug N Plug.', style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold, letterSpacing: -1)),
+                              Text('Innovate. Build. Lead.', style: TextStyle(color: Colors.white70, fontSize: 14, letterSpacing: 1)),
+                            ],
                           ),
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        _buildGlassTextField(_reasonController, 'Why join?', Icons.edit, maxLines: 3),
-                        
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: ElevatedButton.icon(
-                            onPressed: _isSubmitting ? null : _submitApplication,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.primary,
-                              foregroundColor: theme.colorScheme.onPrimary,
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          IconButton(
+                            onPressed: () => Navigator.of(context).pushNamed('/login'),
+                            icon: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                              child: const Icon(Icons.login, color: Colors.white),
                             ),
-                            icon: _isSubmitting 
-                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) 
-                                : const Icon(Icons.send_rounded),
-                            label: Text(_isSubmitting ? 'Sending...' : 'Submit Application', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          ),
+                          )
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 30),
+
+                      // Quote Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [_randomPrimary.withOpacity(0.8), _randomSecondary.withOpacity(0.8)]),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [BoxShadow(color: _randomPrimary.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 10))],
                         ),
-                      ],
-                    ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                             const Icon(Icons.format_quote, color: Colors.white, size: 30),
+                             Text(_randomQuote, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600, height: 1.4)),
+                             const SizedBox(height: 10),
+                             const Text('- Random Tech Wisdom', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 40),
+                      Text('Upcoming Events', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      
+                      // Events List
+                      SizedBox(
+                        height: 240,
+                        child: _isLoadingEvents 
+                          ? Center(child: CircularProgressIndicator(color: _randomPrimary))
+                          : _events.isEmpty 
+                              ? _buildEmptyState()
+                              : ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _events.length,
+                                  physics: const BouncingScrollPhysics(),
+                                  itemBuilder: (context, index) {
+                                    return GestureDetector(
+                                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EventDetailsScreen(event: _events[index]))),
+                                        child: _buildEventCard(_events[index]),
+                                    );
+                                  },
+                                ),
+                      ),
+                      
+                      const SizedBox(height: 40),
+                      Text('Join The Community', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      
+                      // Membership Form
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                        ),
+                        child: Column(
+                          children: [
+                             _buildFancyTextField(_nameController, 'Full Name', Icons.person),
+                             const SizedBox(height: 16),
+                             _buildFancyTextField(_emailController, 'Email Address', Icons.email),
+                             const SizedBox(height: 16),
+                             Row(children: [
+                               Expanded(child: _buildFancyTextField(_registerNumberController, 'Reg No', Icons.numbers)),
+                               const SizedBox(width: 12),
+                               Expanded(child: _buildFancyTextField(_mobileNumberController, 'Mobile', Icons.phone)),
+                             ]),
+                             const SizedBox(height: 16),
+                             Row(children: [
+                               Expanded(child: _buildFancyTextField(_departmentController, 'Dept', Icons.school)),
+                               const SizedBox(width: 12),
+                               Expanded(child: _buildFancyTextField(_yearController, 'Year', Icons.calendar_today)),
+                             ]),
+                             const SizedBox(height: 16),
+                             
+                             // Domain Selector
+                             GestureDetector(
+                               onTap: _showDomainDialog,
+                               child: Container(
+                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                 decoration: BoxDecoration(
+                                   color: Colors.grey.withOpacity(0.1),
+                                   borderRadius: BorderRadius.circular(16),
+                                   border: Border.all(color: Colors.white.withOpacity(0.1)),
+                                 ),
+                                 child: Row(
+                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                   children: [
+                                     Text(
+                                       _selectedDomains.isEmpty ? 'Select Interested Domains' : _selectedDomains.map((e) => e.toUpperCase()).join(', '),
+                                       style: TextStyle(color: _selectedDomains.isEmpty ? Colors.white54 : Colors.white, fontWeight: FontWeight.bold),
+                                       overflow: TextOverflow.ellipsis,
+                                     ),
+                                     Icon(Icons.arrow_drop_down, color: _randomPrimary),
+                                   ],
+                                 ),
+                               ),
+                             ),
+                             
+                             const SizedBox(height: 24),
+                             SizedBox(
+                               width: double.infinity,
+                               height: 56,
+                               child: ElevatedButton(
+                                 onPressed: _isSubmitting ? null : _submitApplication,
+                                 style: ElevatedButton.styleFrom(
+                                   backgroundColor: _randomPrimary,
+                                   foregroundColor: Colors.black,
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                   elevation: 8,
+                                   shadowColor: _randomPrimary.withOpacity(0.5),
+                                 ),
+                                 child: _isSubmitting 
+                                    ? const CircularProgressIndicator(color: Colors.black)
+                                    : const Text('SUBMIT APPLICATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                               ),
+                             ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      Center(child: Text('© 2025 Slug N Plug', style: TextStyle(color: Colors.white30))),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                  const SizedBox(height: 40),
-                  
-                  Center(
-                    child: TextButton.icon(
-                      onPressed: () => Navigator.of(context).pushNamed('/login'),
-                      icon: const Icon(Icons.login),
-                      label: const Text('Member Login'),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
+                ),
               ),
             ),
           ),
@@ -377,170 +351,123 @@ class _GuestScreenState extends State<GuestScreen> {
     );
   }
 
-  Widget _buildGlassTextField(TextEditingController controller, String label, IconData icon, {int maxLines = 1}) {
-      return Container(
-        constraints: BoxConstraints(minHeight: maxLines > 1 ? 100 : 60), // Enforce minimum height
-        child: TextField(
-          controller: controller,
-          maxLines: maxLines,
-          style: const TextStyle(fontSize: 16), // Larger text
-          decoration: InputDecoration(
-            labelText: label,
-            labelStyle: const TextStyle(fontSize: 15),
-            prefixIcon: Icon(icon, size: 24, color: Theme.of(context).primaryColor), // Larger icon
-            filled: true,
-            fillColor: Colors.grey.withOpacity(0.05),
-            isDense: false, // Ensure it's not too compact
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-               borderRadius: BorderRadius.circular(12),
-               borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-               borderRadius: BorderRadius.circular(12),
-               borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20), // Bigger padding
-          ),
-        ),
-      );
+  // Helper Widgets
+  Widget _buildEmptyState() {
+     return Container(
+       width: double.infinity,
+       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(20)),
+       child: Column(
+         mainAxisAlignment: MainAxisAlignment.center,
+         children: [
+           Icon(Icons.rocket_launch, size: 48, color: Colors.white24),
+           SizedBox(height: 8),
+           Text('No Events Yet', style: TextStyle(color: Colors.white54)),
+         ],
+       ),
+     );
   }
-}
 
-class EventCard extends StatelessWidget {
-  final Event event;
-
-  const EventCard({super.key, required this.event});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Use generated pattern for card bg with low opacity
-    final cardPattern = PatternGenerator.generateRandomSvgPattern(event.id ?? event.title);
-
+  Widget _buildEventCard(Event event) {
     return Container(
-      width: 280,
+      width: 260,
       margin: const EdgeInsets.only(right: 16),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        clipBehavior: Clip.antiAlias, // Clip for Stack
-        child: Stack(
-          children: [
-            // Background Pattern or Image
-            Positioned.fill(
-                child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
-                    ? Opacity(
-                        opacity: 0.2, // Subtle background image
-                        child: event.imageUrl!.startsWith('http')
-                            ? Image.network(event.imageUrl!, fit: BoxFit.cover)
-                            : Image.memory(base64Decode(event.imageUrl!), fit: BoxFit.cover),
-                      )
-                    : Opacity(
-                        opacity: 0.1, 
-                        child: SvgPicture.string(cardPattern, fit: BoxFit.cover)
-                    ),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 10, offset: Offset(0, 4))],
+      ),
+      child: Stack(
+        children: [
+          // Image
+          ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: Opacity(
+              opacity: 0.6,
+              child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                 ? Image.network(event.imageUrl!, width: double.infinity, height: double.infinity, fit: BoxFit.cover, 
+                     errorBuilder: (c,e,s) => Container(color: Colors.grey[800]))
+                 : Container(color: Colors.grey[800]),
             ),
-            
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                   // Date Badge
-                   Container(
-                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                     decoration: BoxDecoration(
-                       color: theme.colorScheme.primaryContainer,
-                       borderRadius: BorderRadius.circular(8),
-                     ),
-                     child: Text(
-                       DateFormat.yMMMd().format(event.date),
-                       style: TextStyle(color: theme.colorScheme.onPrimaryContainer, fontWeight: FontWeight.bold, fontSize: 12),
-                     ),
-                   ),
-                   const SizedBox(height: 12),
-                   Text(
-                     event.title,
-                     style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                     maxLines: 2,
-                     overflow: TextOverflow.ellipsis,
-                   ),
-                   const SizedBox(height: 8),
-                   Row(children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[600]),
-                      const SizedBox(width: 4),
-                      Expanded(child: Text(event.venue, style: TextStyle(color: Colors.grey[600], fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                   ]),
-                   const Spacer(),
-                   SizedBox(
-                     width: double.infinity,
-                     child: OutlinedButton(
-                       onPressed: null, // Handled by GestureDetector parent
-                       style: OutlinedButton.styleFrom(
-                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                       ),
-                       child: const Text('View Details'),
-                     ),
-                   )
-                ],
-              ),
+          ),
+          // Gradient Overlay
+          Container(
+             decoration: BoxDecoration(
+               borderRadius: BorderRadius.circular(24),
+               gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black]),
+             ),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: _randomPrimary, borderRadius: BorderRadius.circular(8)),
+                  child: Text(DateFormat.MMMd().format(event.date), style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+                const SizedBox(height: 8),
+                Text(event.title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text(event.venue, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+              ],
             ),
-            
-            // "Registration Open" Banner if applicable
-            if (event.registrationStarted)
-               Positioned(
-                 top: 12,
-                 right: 12,
-                 child: Container(
-                   padding: const EdgeInsets.all(6),
-                   decoration: const BoxDecoration(
-                     color: Colors.green,
-                     shape: BoxShape.circle,
-                   ),
-                   child: const Icon(Icons.confirmation_number, color: Colors.white, size: 16),
-                 ),
-               ),
-          ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFancyTextField(TextEditingController ctrl, String hint, IconData icon) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: TextField(
+        controller: ctrl,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.white30),
+          prefixIcon: Icon(icon, color: _randomSecondary),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),
     );
   }
-}
 
-class AnnouncementCard extends StatelessWidget {
-  final Announcement announcement;
-
-  const AnnouncementCard({super.key, required this.announcement});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildAnimatedBackground() {
+    return AnimatedBuilder(
+      animation: _bgController,
+      builder: (context, child) {
+        return Stack(
           children: [
-            Text(
-              announcement.title,
-              style: theme.textTheme.titleMedium,
+            // Blob 1
+            Positioned(
+              top: -100 + (_bgController.value * 50),
+              left: -50 + (_bgController.value * 30),
+              child: Container(
+                width: 300, height: 300,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: _randomPrimary.withOpacity(0.4)),
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat.yMMMd().format(announcement.date),
-              style: theme.textTheme.bodySmall,
+             // Blob 2
+            Positioned(
+              bottom: -50 - (_bgController.value * 50),
+              right: -50 - (_bgController.value * 30),
+              child: Container(
+                width: 350, height: 350,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: _randomSecondary.withOpacity(0.4)),
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(announcement.content, style: theme.textTheme.bodyMedium),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

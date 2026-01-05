@@ -49,9 +49,23 @@ class MemberProfileScreen extends StatelessWidget {
         elevation: 0,
         iconTheme: IconThemeData(color: textColor),
         actions: [
-           IconButton(
-             icon: const Icon(Icons.edit),
-             onPressed: () => _showEditProfileDialog(context),
+           FutureBuilder<UserLoginDetails?>(
+             future: RoleBasedDatabaseService().getCurrentUser(),
+             builder: (context, snapshot) {
+               final currentUser = snapshot.data;
+               if (currentUser == null) return const SizedBox.shrink();
+               
+               final isAdmin = currentUser.role == UserRole.admin;
+               final isSelf = currentUser.email == member.email; // Assuming email is unique ID
+
+               if (isAdmin || isSelf) {
+                 return IconButton(
+                   icon: const Icon(Icons.edit),
+                   onPressed: () => _showEditProfileDialog(context),
+                 );
+               }
+               return const SizedBox.shrink();
+             },
            ),
         ],
       ),

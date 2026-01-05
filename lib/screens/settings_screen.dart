@@ -148,20 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             fallbackText: _currentUser?.username,
           ),
 
-          _SettingsTile(
-            icon: Icons.history,
-            color: Colors.blueAccent,
-            title: 'My Attendance',
-            subtitle: 'View your attendance history',
-            onTap: () {
-               if (_currentUser != null) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => UserAttendanceScreen(username: _currentUser!.email)),
-                );
-               }
-            },
-          ),
+
           _SettingsTile(
             icon: Icons.notifications,
             color: Colors.orange, // Choose an appropriate color

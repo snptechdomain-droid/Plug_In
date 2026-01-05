@@ -480,6 +480,81 @@ class RoleBasedDatabaseService {
       return [];
     }
   }
+  
+  /// Helper to check if a session date is applicable for a user (on or after join date)
+  static bool _isSessionApplicable(DateTime sessionDate, DateTime joinDate) {
+    // Strict comparison: If you joined at 5 PM, a 9 AM session should NOT count (unless you were marked present).
+    final s = sessionDate.toUtc();
+    final j = joinDate.toUtc();
+    return s.isAfter(j) || s.isAtSameMomentAs(j);
+  }
+
+  /// Helper to calculate attendance percentage filtering by joining date (Global List)
+  static double calculateSmartAttendancePercentage(UserLoginDetails user, List<Map<String, dynamic>> allRecords) {
+    if (allRecords.isEmpty) return 0.0;
+    
+    // If createdAt is the default fallback (year 2000), assume missing data.
+    // treat effectiveJoinDate as NOW so we don't penalize them for past sessions they missed.
+    // However, the legacy check (isPresent) below ensures we still credit them if they were actually there.
+    DateTime effectiveJoinDate = user.createdAt;
+    if (effectiveJoinDate.year == 2000) {
+      effectiveJoinDate = DateTime.now();
+    }
+    
+    // Filter applicable sessions
+    final applicableRecords = allRecords.where((record) {
+      if (record['date'] == null) return false; // Skip invalid records
+      
+      final recordDate = parseDate(record['date']);
+      
+      // Check presence first (if present, it ALWAYS counts, even if before join date - legacy support)
+      final presentIds = List<String>.from(record['presentUserIds'] ?? []);
+      final isPresent = presentIds.contains(user.id) || 
+                        presentIds.contains(user.username) || 
+                        presentIds.contains(user.email); // Checking all identifiers
+                        
+      if (isPresent) return true;
+
+      // If absent, only count if the session occurred ON or AFTER their join day
+      return _isSessionApplicable(recordDate, effectiveJoinDate);
+    }).toList();
+
+    if (applicableRecords.isEmpty) return 0.0;
+    
+    // Calculate Score
+    int presentCount = 0;
+    for (var record in applicableRecords) {
+       final presentIds = List<String>.from(record['presentUserIds'] ?? []);
+       if (presentIds.contains(user.id) || 
+           presentIds.contains(user.username) || 
+           presentIds.contains(user.email)) {
+         presentCount++;
+       }
+    }
+
+    return (presentCount / applicableRecords.length) * 100.0;
+  }
+  
+  /// Helper to filter applicable records for a single user's history view
+  static List<Map<String, dynamic>> filterUserHistory(UserLoginDetails user, List<Map<String, dynamic>> history) {
+    DateTime effectiveJoinDate = user.createdAt;
+    if (effectiveJoinDate.year == 2000) {
+      effectiveJoinDate = DateTime.now();
+    }
+    
+    return history.where((record) {
+        // Valid date check
+        if (record['date'] == null) return false;
+        final recordDate = parseDate(record['date']);
+        
+        // Check Status
+        final isPresent = record['status'] == 'PRESENT';
+        if (isPresent) return true;
+
+        // Date check
+        return _isSessionApplicable(recordDate, effectiveJoinDate);
+    }).toList();
+  }
 
   String _getBaseUrl() {
     // static const String _baseUrl = 'http://192.168.1.3:9000/api'; // Local Mobile Dev

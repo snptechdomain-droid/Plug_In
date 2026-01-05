@@ -52,14 +52,8 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
       // 2. Fetch all raw attendance history
       final history = await _roleDatabase.fetchUserAttendance(widget.username);
       
-      // 3. Filter history based on joinDate
-      final filteredHistory = history.where((record) {
-        if (record['date'] == null) return false;
-        final recordDate = RoleBasedDatabaseService.parseDate(record['date']).toUtc();
-        final joinDateUtc = joinDate.toUtc();
-        // Include events strictly after joining OR if they were marked present
-        return recordDate.isAfter(joinDateUtc) || record['status'] == 'PRESENT';
-      }).toList();
+      // 3. Filter history consistently using shared helper
+      final filteredHistory = RoleBasedDatabaseService.filterUserHistory(user, history);
 
       if (mounted) {
         setState(() {

@@ -48,39 +48,14 @@ class _MembersScreenState extends State<MembersScreen> {
       final members = await _roleDatabase.fetchAllUsers();
       final attendance = await _roleDatabase.fetchAttendanceRecords();
       
-      // OPTIMIZATION: Pre-calculate attendance here
+      // OPTIMIZATION: Date parsing logic moved to helper/on-demand or handled internally.
+      // We pass the raw 'attendance' list directly to the helper.
       final Map<String, double> calculatedMap = {};
       
-      // Parse attendance ONCE
-      final parsedRecords = attendance.where((r) => r['date'] != null).map((record) {
-          return {
-            'date': RoleBasedDatabaseService.parseDate(record['date']).toUtc(),
-            'presentById': Set<String>.from(record['presentUserIds'] ?? []),
-             // Fallback support if needed (username/email in list) but usually IDs are best
-          };
-      }).toList();
-
       for (var member in members) {
-          final joinDate = member.createdAt.toUtc();
-          int totalApplicable = 0;
-          int presentCount = 0;
-
-          for (var record in parsedRecords) {
-              final recordDate = record['date'] as DateTime;
-              if (recordDate.isAfter(joinDate)) {
-                  totalApplicable++;
-                  final presentSet = record['presentById'] as Set<String>;
-                  if (presentSet.contains(member.id) || 
-                      presentSet.contains(member.username) || 
-                      presentSet.contains(member.email)) {
-                      presentCount++;
-                  }
-              }
-          }
-          
-          calculatedMap[member.username] = (totalApplicable == 0) 
-              ? 0.0 
-              : (presentCount / totalApplicable) * 100.0;
+          // FIX: Pass the raw _attendanceRecords (or 'attendance' local var) to the helper.
+          // The helper expects 'presentUserIds' list, not 'presentById' set.
+          calculatedMap[member.username] = RoleBasedDatabaseService.calculateSmartAttendancePercentage(member, attendance);
       }
       
       if (mounted) {
@@ -291,29 +266,7 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   double _calculateAttendance(UserLoginDetails user) {
-    final joinDate = user.createdAt;
-
-    int totalApplicable = 0;
-    int presentCount = 0;
-
-    for (var record in _attendanceRecords) {
-      if (record['date'] != null) {
-        final recordDate = RoleBasedDatabaseService.parseDate(record['date']).toUtc();
-        final joinDateUtc = joinDate.toUtc();
-        // Only count records AFTER the user joined
-        if (recordDate.isAfter(joinDateUtc)) {
-           totalApplicable++;
-           final presentIds = List<String>.from(record['presentUserIds'] ?? []);
-           // Match by ID (primary), or username/email (legacy/fallback)
-           if (presentIds.contains(user.id) || presentIds.contains(user.username) || presentIds.contains(user.email)) {
-             presentCount++;
-           }
-        }
-      }
-    }
-
-    if (totalApplicable == 0) return 0.0;
-    return (presentCount / totalApplicable) * 100.0;
+    return RoleBasedDatabaseService.calculateSmartAttendancePercentage(user, _attendanceRecords);
   }
 
   double _calculateAverageAttendance() {
