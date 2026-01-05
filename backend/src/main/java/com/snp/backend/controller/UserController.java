@@ -25,8 +25,11 @@ public class UserController {
         return users;
     }
 
+import java.util.stream.Collectors;
+
     @PutMapping("/{username}")
     public User updateUserProfile(@PathVariable String username, @RequestBody User updatedUser) {
+        System.out.println("Updating profile for: " + username);
         User user = userRepository.findByEmail(username).orElse(null);
 
         if (user == null) {
@@ -56,10 +59,40 @@ public class UserController {
         if (updatedUser.getEmail() != null && !updatedUser.getEmail().equals(user.getEmail())) {
             // Check if new email is taken
             if (userRepository.findByEmail(updatedUser.getEmail()).isPresent()) {
-                throw new RuntimeException("Email already in use");
+                 throw new RuntimeException("Email already in use");
             }
             user.setEmail(updatedUser.getEmail());
             // Note: If email is used as login username, this changes login credential.
+        }
+
+        // Domain update
+        if (updatedUser.getDomains() != null) {
+            user.setDomains(updatedUser.getDomains());
+        }
+
+        // Lead of Domain update with strict validation
+        if (updatedUser.getLeadOfDomain() != null) {
+            String newLeadDomain = updatedUser.getLeadOfDomain();
+            
+            // Allow clearing lead status by sending empty string
+            if (!newLeadDomain.isEmpty()) {
+                // 2. Check if THIS domain already has a lead
+                try {
+                    List<User> existingLeads = userRepository.findAll().stream()
+                            .filter(u -> u.getLeadOfDomain() != null && newLeadDomain.equals(u.getLeadOfDomain()) && !u.getId().equals(user.getId()))
+                            .collect(Collectors.toList());
+                    
+                    if (!existingLeads.isEmpty()) {
+                        System.out.println("Conflict: Domain " + newLeadDomain + " already led by " + existingLeads.get(0).getEmail());
+                        throw new RuntimeException("Domain " + newLeadDomain + " already has a lead.");
+                    }
+                } catch (Exception e) {
+                   System.out.println("Error verifying lead status: " + e.getMessage());
+                   e.printStackTrace();
+                   throw new RuntimeException("Error verifying lead status: " + e.getMessage());
+                }
+            }
+            user.setLeadOfDomain(newLeadDomain);
         }
 
         return userRepository.save(user);

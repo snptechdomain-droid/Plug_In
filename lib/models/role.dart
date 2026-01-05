@@ -175,12 +175,12 @@ class UserLoginDetails {
   final String? avatarUrl;
   
   // New Fields for Domain Features
-  final List<String> domains; // Changed from single String to List
-  final String? domain; // Keep for legacy/primary support if needed, or derived from domains first element
+  // New Fields for Domain Features
+  final List<String> domains; 
+  final String? domain; 
   final String? department;
   final String? year;
   final String? section;
-  final String? registerNumber;
   final String? registerNumber;
   final String? mobileNumber;
   final String? leadOfDomain;
@@ -203,6 +203,7 @@ class UserLoginDetails {
     this.section,
     this.registerNumber,
     this.mobileNumber,
+    this.leadOfDomain,
   }) : createdAt = createdAt ?? DateTime.now();
 
   factory UserLoginDetails.fromJson(Map<String, dynamic> json) {
@@ -269,6 +270,7 @@ class UserLoginDetails {
     String? bio,
     String? avatarUrl,
     String? domain,
+    List<String>? domains,
     String? department,
     String? year,
     String? section,
@@ -288,6 +290,7 @@ class UserLoginDetails {
       bio: bio ?? this.bio,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       domain: domain ?? this.domain,
+      domains: domains ?? this.domains,
       department: department ?? this.department,
       year: year ?? this.year,
       section: section ?? this.section,

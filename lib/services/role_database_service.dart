@@ -206,7 +206,6 @@ class RoleBasedDatabaseService {
           year: data['year'],
           section: data['section'],
           registerNumber: data['registerNumber'],
-          registerNumber: data['registerNumber'],
           mobileNumber: data['mobileNumber'],
           leadOfDomain: data['leadOfDomain'],
         );
@@ -303,7 +302,7 @@ class RoleBasedDatabaseService {
       
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        final backendUsers = data.map((json) {
+        final backendUsers = data.map<UserLoginDetails>((json) {
             return UserLoginDetails(
               username: json['displayName'] ?? json['email'] ?? 'Unknown',
               email: json['email'] ?? '',
