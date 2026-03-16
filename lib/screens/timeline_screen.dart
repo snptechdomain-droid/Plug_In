@@ -27,6 +27,9 @@ class _TimelineScreenState extends State<TimelineScreen> {
   final double _laneHeight = 200.0;
   bool _isPanMode = false; // Default to Edit Mode (Select) for immediate interaction
 
+  bool _isLoading = true;
+  String? _loadingError;
+
 
 
   final List<Color> colors = const [
@@ -65,7 +68,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     super.initState();
     _projectId = widget.collaboration?.id ?? 'demo_project';
     _myUserId = 'user_${DateTime.now().millisecondsSinceEpoch % 1000}';
-    
+
     _ws.connect(_projectId, _myUserId);
     _ws.nodeStream.listen((msg) {
       if (!mounted) return;
@@ -73,7 +76,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
         final data = msg['data'];
         final nodeId = msg['nodeId'];
         var action = msg['action'];
-        
+
         // Fallback: check data for action if not at top level
         if (action == null && data is Map && data['action'] != null) {
           action = data['action'];
@@ -113,47 +116,93 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 
   void _loadMilestones() {
-    var data = widget.collaboration?.toolData['timeline_milestones'];
+    setState(() {
+      _isLoading = true;
+      _loadingError = null;
+    });
 
-    // Support multiple backend formats:
-    // - timeline_milestones: List<Map>
-    // - timelineData: JSON string (legacy)
-    // - timelineData: already-decoded List<Map> (newer backend)
-    // - timelineData: Map with a 'milestones' entry
-    if (data == null && widget.collaboration?.toolData['timelineData'] != null) {
-      final raw = widget.collaboration!.toolData['timelineData'];
-      if (raw is String) {
-        try {
-          final decoded = jsonDecode(raw);
-          if (decoded is List) {
-            data = decoded;
-          } else if (decoded is Map && decoded['milestones'] is List) {
-            data = decoded['milestones'];
+    try {
+      var data = widget.collaboration?.toolData['timeline_milestones'];
+
+      // Support multiple backend formats:
+      // - timeline_milestones: List<Map>
+      // - timelineData: JSON string (legacy)
+      // - timelineData: already-decoded List<Map> (newer backend)
+      // - timelineData: Map with a 'milestones' entry
+      // - timelineData: Map with 'timeline_milestones' entry
+      if (data == null && widget.collaboration?.toolData['timelineData'] != null) {
+        final raw = widget.collaboration!.toolData['timelineData'];
+        if (raw is String) {
+          try {
+            final decoded = jsonDecode(raw);
+            if (decoded is List) {
+              data = decoded;
+            } else if (decoded is Map) {
+              if (decoded['milestones'] is List) {
+                data = decoded['milestones'];
+              } else if (decoded['timeline_milestones'] is List) {
+                data = decoded['timeline_milestones'];
+              }
+            }
+          } catch (e) {
+            // Try a basic recovery for common formatting issues (single quotes / trailing commas)
+            try {
+              final recovered = raw
+                  .replaceAll("'", '"')
+                  .replaceAll(RegExp(r",\s*}"), '}')
+                  .replaceAll(RegExp(r",\s*]"), ']');
+              final decoded = jsonDecode(recovered);
+              if (decoded is List) {
+                data = decoded;
+              } else if (decoded is Map) {
+                if (decoded['milestones'] is List) {
+                  data = decoded['milestones'];
+                } else if (decoded['timeline_milestones'] is List) {
+                  data = decoded['timeline_milestones'];
+                }
+              }
+            } catch (e2) {
+              _loadingError = 'Failed to parse timeline data (invalid JSON)';
+              debugPrint('Error parsing timelineData string: $e, recovery also failed: $e2');
+            }
           }
-        } catch (e) {
-          print('Error parsing timelineData string: $e');
+        } else if (raw is List) {
+          data = raw;
+        } else if (raw is Map) {
+          if (raw['milestones'] is List) {
+            data = raw['milestones'];
+          } else if (raw['timeline_milestones'] is List) {
+            data = raw['timeline_milestones'];
+          }
         }
-      } else if (raw is List) {
-        data = raw;
-      } else if (raw is Map && raw['milestones'] is List) {
-        data = raw['milestones'];
       }
-    }
 
-    if (data is List) {
-      try {
-        final List<Map<String, dynamic>> loaded = data.map((item) {
-           if (item is Map) {
-             return _sanitizeMilestone(Map<String, dynamic>.from(item));
-           }
-           return <String, dynamic>{};
-        }).where((m) => m.isNotEmpty).toList().cast<Map<String, dynamic>>();
+      if (data is List) {
+        try {
+          final List<Map<String, dynamic>> loaded = data.map((item) {
+             if (item is Map) {
+               return _sanitizeMilestone(Map<String, dynamic>.from(item));
+             }
+             return <String, dynamic>{};
+          }).where((m) => m.isNotEmpty).toList().cast<Map<String, dynamic>>();
 
+          setState(() {
+            _milestones = loaded;
+          });
+        } catch (e) {
+          _loadingError = 'Failed to load timeline entries';
+          debugPrint('Error converting timeline list: $e');
+        }
+      } else if (_loadingError == null) {
+        // If no timeline data was found, that's not necessarily an error - but
+        // we want to show a message so it doesn't look like the screen is stuck.
+        _loadingError = 'No timeline data available.';
+      }
+    } finally {
+      if (mounted) {
         setState(() {
-          _milestones = loaded;
+          _isLoading = false;
         });
-      } catch (e) {
-        print('Error converting timeline list: $e');
       }
     }
   }
@@ -443,37 +492,61 @@ class _TimelineScreenState extends State<TimelineScreen> {
           Expanded(
             child: Stack(
               children: [
-                LiveCursors(
-                  cursorStream: _ws.cursorStream,
-                  myUserId: _myUserId,
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    boundaryMargin: const EdgeInsets.all(20000),
-                    minScale: 0.1,
-                    maxScale: 5.0,
-                    constrained: false,
-                    panEnabled: _isPanMode,
-                    child: Stack(
-                      children: [
-                        // Infinite Canvas Background/Grid
-                        SizedBox(
-                          width: 50000,
-                          height: 50000,
-                          child: CustomPaint(
-                            painter: _TimelinePainter(
-                              milestones: _milestones,
-                              colorScheme: Theme.of(context).colorScheme,
-                              phases: _phases,
-                              laneHeight: _laneHeight,
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else if (_loadingError != null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _loadingError!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 16, color: Colors.red),
+                          ),
+                          const SizedBox(height: 12),
+                          ElevatedButton(
+                            onPressed: _loadMilestones,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  LiveCursors(
+                    cursorStream: _ws.cursorStream,
+                    myUserId: _myUserId,
+                    child: InteractiveViewer(
+                      transformationController: _transformationController,
+                      boundaryMargin: const EdgeInsets.all(20000),
+                      minScale: 0.1,
+                      maxScale: 5.0,
+                      constrained: false,
+                      panEnabled: _isPanMode,
+                      child: Stack(
+                        children: [
+                          // Infinite Canvas Background/Grid
+                          SizedBox(
+                            width: 50000,
+                            height: 50000,
+                            child: CustomPaint(
+                              painter: _TimelinePainter(
+                                milestones: _milestones,
+                                colorScheme: Theme.of(context).colorScheme,
+                                phases: _phases,
+                                laneHeight: _laneHeight,
+                              ),
                             ),
                           ),
-                        ),
-                        // Milestones
-                        ..._milestones.map(_buildMilestone),
-                      ],
+                          // Milestones
+                          ..._milestones.map(_buildMilestone),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
