@@ -387,6 +387,7 @@ class RoleBasedDatabaseService {
       final userJson = _prefs?.getString(_currentUserKey);
 
       if (userJson == null) {
+        _cachedUser = null;
         return null;
       }
 
@@ -395,6 +396,7 @@ class RoleBasedDatabaseService {
       return user;
     } catch (e) {
       print('Error getting current user: $e');
+      _cachedUser = null;
       return null;
     }
   }
@@ -405,6 +407,13 @@ class RoleBasedDatabaseService {
       await _ensureInitialized();
       _cachedUser = null;
       await _prefs?.remove(_currentUserKey);
+
+      if (kDebugMode) {
+        final stillHas = _prefs?.containsKey(_currentUserKey) ?? false;
+        if (stillHas) {
+          print('RoleBasedDatabaseService.clearCurrentUser: key $_currentUserKey still present after remove');
+        }
+      }
     } catch (e) {
       print('Error clearing current user: $e');
     }

@@ -30,7 +30,13 @@ class AuthService {
   Future<User?> loadCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
     final userStr = prefs.getString(_currentUserKey);
-    if (userStr != null) {
+
+    if (userStr == null || userStr.isEmpty) {
+      _currentUser = null;
+      return null;
+    }
+
+    try {
       final userData = jsonDecode(userStr);
       _currentUser = User(
         id: userData['id']?.toString() ?? '',
@@ -38,7 +44,10 @@ class AuthService {
         email: userData['email']?.toString() ?? '',
         role: userData['role']?.toString() ?? 'member',
       );
+    } catch (_) {
+      _currentUser = null;
     }
+
     return _currentUser;
   }
 
@@ -70,13 +79,51 @@ class AuthService {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_currentUserKey);
+
+    // Ensure we clear in-memory state too (important for hot reload)
     _currentUser = null;
+
+    if (kDebugMode) {
+      final stillHas = prefs.containsKey(_currentUserKey);
+      if (stillHas) {
+        debugPrint('AuthService.logout: key $_currentUserKey still present after remove');
+      }
+    }
   }
 
   // Check if user is logged in
   Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_currentUserKey);
+
+    if (!prefs.containsKey(_currentUserKey)) {
+      return false;
+    }
+
+    // Validate stored user data; clear if invalid.
+    final userStr = prefs.getString(_currentUserKey);
+    if (userStr == null || userStr.isEmpty) {
+      await prefs.remove(_currentUserKey);
+      _currentUser = null;
+      return false;
+    }
+
+    try {
+      final userData = jsonDecode(userStr);
+      if (userData is Map<String, dynamic>) {
+        final username = userData['username']?.toString();
+        if (username == null || username.isEmpty) {
+          await prefs.remove(_currentUserKey);
+          _currentUser = null;
+          return false;
+        }
+      }
+    } catch (_) {
+      await prefs.remove(_currentUserKey);
+      _currentUser = null;
+      return false;
+    }
+
+    return true;
   }
 
   // Get user role

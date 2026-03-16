@@ -114,14 +114,29 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   void _loadMilestones() {
     var data = widget.collaboration?.toolData['timeline_milestones'];
+
+    // Support multiple backend formats:
+    // - timeline_milestones: List<Map>
+    // - timelineData: JSON string (legacy)
+    // - timelineData: already-decoded List<Map> (newer backend)
+    // - timelineData: Map with a 'milestones' entry
     if (data == null && widget.collaboration?.toolData['timelineData'] != null) {
-      try {
-        final decoded = jsonDecode(widget.collaboration!.toolData['timelineData']);
-        if (decoded is List) {
-          data = decoded;
+      final raw = widget.collaboration!.toolData['timelineData'];
+      if (raw is String) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            data = decoded;
+          } else if (decoded is Map && decoded['milestones'] is List) {
+            data = decoded['milestones'];
+          }
+        } catch (e) {
+          print('Error parsing timelineData string: $e');
         }
-      } catch (e) {
-        print('Error parsing timelineData: $e');
+      } else if (raw is List) {
+        data = raw;
+      } else if (raw is Map && raw['milestones'] is List) {
+        data = raw['milestones'];
       }
     }
 

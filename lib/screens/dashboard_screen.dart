@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart'; 
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/screens/settings_screen.dart';
+import 'package:app/services/auth_service.dart';
 import 'package:app/services/role_database_service.dart';
 import 'dart:ui' show lerpDouble; // For smooth animation interpolation
 import 'dart:math' as math; // For math operations in custom painter
@@ -489,8 +490,10 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 IconButton(
                   icon: Icon(Icons.logout, color: appBarTextColor), 
                   tooltip: 'Logout',
-                  onPressed: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                  onPressed: () async {
+                    await RoleBasedDatabaseService().clearCurrentUser();
+                    await AuthService().logout();
+                    Navigator.of(context).pushNamedAndRemoveUntil('/guest', (route) => false);
                   },
                 ),
               ],

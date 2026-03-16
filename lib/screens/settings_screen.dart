@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/services/auth_service.dart';
 import 'package:app/services/theme_service.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/models/role.dart';
@@ -532,6 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () async {
               Navigator.pop(context);
               await RoleBasedDatabaseService().clearCurrentUser();
+              await AuthService().logout();
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(
                     context, '/guest', (_) => false);

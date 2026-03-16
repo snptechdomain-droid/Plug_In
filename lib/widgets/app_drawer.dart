@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/services/auth_service.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/models/role.dart';
 import 'dart:convert';
@@ -149,8 +150,10 @@ class _AppDrawerState extends State<AppDrawer> {
                  ListTile(
                     leading: const Icon(Icons.logout, color: Colors.red),
                     title: const Text('Logout', style: TextStyle(color: Colors.red)),
-                    onTap: () {
-                       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                    onTap: () async {
+                       await RoleBasedDatabaseService().clearCurrentUser();
+                       await AuthService().logout();
+                       Navigator.of(context).pushNamedAndRemoveUntil('/guest', (route) => false);
                     },
                  ),
                ],

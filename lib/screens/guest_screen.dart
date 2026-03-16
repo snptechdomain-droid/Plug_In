@@ -54,7 +54,8 @@ class _GuestScreenState extends State<GuestScreen> with TickerProviderStateMixin
     "Make it work, make it right, make it fast.",
     "First, solve the problem. Then, write the code.",
     "Of it works it works, doesn't matter how it works.",
-    "See you on the other side"
+    "See you on the other side",
+    "Ai is for assistance not replacement",
   ];
 
   @override
