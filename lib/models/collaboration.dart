@@ -28,7 +28,11 @@ class Collaboration {
     // Check for flattened data from backend and merge into tools
     if (map['mindmapData'] != null) tools['mindmapData'] = map['mindmapData'];
     if (map['flowchartData'] != null) tools['flowchartData'] = map['flowchartData'];
+
+    // Timeline data can arrive under multiple keys depending on backend version
     if (map['timelineData'] != null) tools['timelineData'] = map['timelineData'];
+    if (map['timeline_data'] != null) tools['timelineData'] = map['timeline_data'];
+    if (map['timeline_milestones'] != null) tools['timeline_milestones'] = map['timeline_milestones'];
 
     return Collaboration(
       id: map['id'] ?? '',

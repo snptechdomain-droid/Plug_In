@@ -29,6 +29,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
 
   bool _isLoading = true;
   String? _loadingError;
+  String? _toolDataPreview;
 
 
 
@@ -122,7 +123,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
     });
 
     try {
-      var data = widget.collaboration?.toolData['timeline_milestones'];
+      var data = widget.collaboration?.toolData['timeline_milestones'] ?? widget.collaboration?.toolData['timeline_data'];
 
       // Support multiple backend formats:
       // - timeline_milestones: List<Map>
@@ -193,10 +194,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
           _loadingError = 'Failed to load timeline entries';
           debugPrint('Error converting timeline list: $e');
         }
-      } else if (_loadingError == null) {
-        // If no timeline data was found, that's not necessarily an error - but
-        // we want to show a message so it doesn't look like the screen is stuck.
-        _loadingError = 'No timeline data available.';
+      } else {
+        // No timeline data was found; treat as an empty timeline (not an error).
+        _milestones = [];
+        _toolDataPreview = null;
       }
     } finally {
       if (mounted) {
